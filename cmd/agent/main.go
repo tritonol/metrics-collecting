@@ -36,7 +36,6 @@ func main() {
 
 			fmt.Println(metrics)
 		case <-sendTicker.C:
-			fmt.Println("send")
 			request.Send(metrics, serverAddress)
 		}
 	}
