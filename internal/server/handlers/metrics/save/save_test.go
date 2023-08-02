@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/tritonol/metrics-collecting.git/internal/storage/memstorage"
 )
 
@@ -38,6 +39,9 @@ func TestSaveHanndler(t *testing.T) {
 			h(w, request)
 
 			result := w.Result()
+
+			err := result.Body.Close()
+			require.NoError(t, err)
 
 			assert.Equal(t, test.want.code, result.StatusCode)
             assert.Equal(t, test.want.contentType, result.Header.Get("Content-Type"))
