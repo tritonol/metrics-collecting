@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/tritonol/metrics-collecting.git/internal/agent/metrics"
@@ -33,8 +32,6 @@ func main() {
 		case <-updateTicker.C:
 			metrics.CollectCounter()
 			metrics.CollectGauge()
-
-			fmt.Println(metrics)
 		case <-sendTicker.C:
 			request.Send(metrics, serverAddress)
 		}
