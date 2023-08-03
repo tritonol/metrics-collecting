@@ -33,8 +33,6 @@ func main() {
 		case <-updateTicker.C:
 			metrics.CollectCounter()
 			metrics.CollectGauge()
-
-			fmt.Println(metrics)
 		case <-sendTicker.C:
 			request.Send(metrics, serverAddress)
 		}
