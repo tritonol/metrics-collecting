@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/tritonol/metrics-collecting.git/internal/agent/metrics"
