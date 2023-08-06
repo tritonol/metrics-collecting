@@ -3,7 +3,8 @@ package save
 import (
 	"net/http"
 	"strconv"
-	"strings"
+
+	"github.com/go-chi/chi/v5"
 )
 
 const (
@@ -18,30 +19,26 @@ type MetricSaver interface {
 
 func New(metricSaver MetricSaver) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+
+		metricType := chi.URLParam(r, "type")
+		metricName := chi.URLParam(r, "name")
+		metricValue := chi.URLParam(r, "value")
+
+		if metricName == "" || metricType == "" || metricValue == "" {
+			http.Error(w, "missing param", http.StatusNotFound)
 			return
 		}
-
-		parts := strings.Split(r.URL.Path, "/")
-		if len(parts) != 5 {
-			http.Error(w, "Invalid URL format", http.StatusNotFound)
-			return
-		}
-
-		metricType := parts[2]
-		metricName := parts[3]
 
 		switch metricType{
 		case gauge:
-			metricValue, err := strconv.ParseFloat(parts[4], 64)
+			metricValue, err := strconv.ParseFloat(metricValue, 64)
 			if err != nil {
 				http.Error(w, "Invalid metric value", http.StatusBadRequest)
 				return
 			}
 			metricSaver.StoreGauge(metricName, metricValue)
 		case counter:
-			metricValue, err := strconv.ParseInt(parts[4], 10, 64)
+			metricValue, err := strconv.ParseInt(metricValue, 10, 64)
 			if err != nil {
 				http.Error(w, "Invalid metric value", http.StatusBadRequest)
 				return
@@ -53,6 +50,6 @@ func New(metricSaver MetricSaver) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
+		// w.WriteHeader(http.StatusOK)
 	}
 }
