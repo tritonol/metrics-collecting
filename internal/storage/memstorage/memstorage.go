@@ -19,3 +19,21 @@ func (ms *MemStorage) StoreGauge(name string, value float64) {
 func (ms *MemStorage) IncrCounter(name string, value int64) {
 	ms.counterMetrics[name] += value
 }
+
+func (ms *MemStorage) GetCounter(name string) (int64, bool) {
+	resp, ok := ms.counterMetrics[name]
+	return resp, ok
+}
+
+func (ms *MemStorage) GetGauge(name string) (float64, bool) {
+	resp, ok := ms.gaugeMetrics[name]
+	return resp, ok
+}
+
+func (ms *MemStorage) GetAllGauge() map[string]float64 {
+	return ms.gaugeMetrics
+}
+
+func (ms *MemStorage) GetAllCounter() map[string]int64 {
+	return ms.counterMetrics
+}
