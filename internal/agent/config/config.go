@@ -10,7 +10,7 @@ type Config struct {
 
 func MustLoad() *Config {
 	var cfg Config
-	flag.StringVar(&cfg.Address, "a", "http://localhost:8081", "endpoint address")
+	flag.StringVar(&cfg.Address, "a", "http://localhost:8080", "endpoint address")
 	flag.Int64Var(&cfg.PollInterval, "p", 2, "set poll interval")
 	flag.Int64Var(&cfg.ReportInterval, "r", 10, "set report interval")
 	flag.Parse()
