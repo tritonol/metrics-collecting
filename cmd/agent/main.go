@@ -13,12 +13,6 @@ type MetricRequest interface {
 	gatherCounter()
 }
 
-const(
-	pollInterval = 2 * time.Second
-	reportInteravl = 10 * time.Second
-	serverAddress = "http://localhost:8080"
-)
-
 func main() {
 	cfg := config.MustLoad()
 
