@@ -1,16 +1,33 @@
-package save
+package main
 
 import (
-	"net/http"
-	"net/http/httptest"
-	"testing"
+    "io"
+    "net/http"
+    "net/http/httptest"
+    "testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"github.com/tritonol/metrics-collecting.git/internal/storage/memstorage"
+    "github.com/stretchr/testify/assert"
+    "github.com/stretchr/testify/require"
 )
 
-func TestSaveHanndler(t *testing.T) {
+func testRequest(t *testing.T, ts *httptest.Server, method,
+                    path string) (*http.Response, string) {
+    req, err := http.NewRequest(method, ts.URL+path, nil)
+    require.NoError(t, err)
+
+    resp, err := ts.Client().Do(req)
+    require.NoError(t, err)
+    defer resp.Body.Close()
+
+    respBody, err := io.ReadAll(resp.Body)
+    require.NoError(t, err)
+
+    return resp, string(respBody)
+}
+
+func TestRouter(t *testing.T) {
+	ts := httptest.NewServer(MetricRouter())
+
 	type want struct {
 		code        int
 		contentType string
@@ -32,19 +49,9 @@ func TestSaveHanndler(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			storage := memstorage.NewMemStorage()
-			request := httptest.NewRequest(test.method, test.url, nil)
-			w := httptest.NewRecorder()
-			h := http.HandlerFunc(New(storage))
-			h(w, request)
-
-			result := w.Result()
-
-			err := result.Body.Close()
-			require.NoError(t, err)
-
-			assert.Equal(t, test.want.code, result.StatusCode)
-            assert.Equal(t, test.want.contentType, result.Header.Get("Content-Type"))
+			resp, _ := testRequest(t, ts, "POST", test.url)
+			assert.Equal(t, test.want.code, resp.StatusCode)
+			assert.Equal(t, test.want.contentType, resp.Header.Get("Content-Type"))
 		})
 	}
 }
