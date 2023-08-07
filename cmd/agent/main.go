@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/tritonol/metrics-collecting.git/internal/agent/config"
@@ -15,7 +16,7 @@ type MetricRequest interface {
 
 func main() {
 	cfg := config.MustLoad()
-
+	fmt.Println(cfg)
 	metrics := metrics.NewMetrics()
 
 	updateTicker := time.NewTicker(time.Duration(cfg.PollInterval) * time.Second)
