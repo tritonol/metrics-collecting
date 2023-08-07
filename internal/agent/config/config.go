@@ -15,14 +15,14 @@ type Config struct {
 func MustLoad() *Config {
 	var cfg Config
 	addr := flag.String("a", "localhost:8080", "endpoint address")
-	flag.Int64("p", 2, "set poll interval")
-	flag.Int64("r", 10, "set report interval")
+	flag.Int64Var(&cfg.PollInterval,"p", 2, "set poll interval")
+	flag.Int64Var(&cfg.ReportInterval,"r", 10, "set report interval")
 	flag.Parse()
 
 	if poll := os.Getenv("POLL_INTERVAL"); poll != "" {
 		poll, err := strconv.ParseInt(poll, 10, 64)
 		if err != nil {
-			_ = poll
+			_ = err
 		} else {
 			cfg.PollInterval = poll
 		}
