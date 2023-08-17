@@ -19,7 +19,7 @@ func MustLoad() *Config {
 		PollInterval: 10,
 	}
 
-	addr := *flag.String("a", "localhost:8080", "endpoint address")
+	addr := flag.String("a", "localhost:8080", "endpoint address")
 	
 	flag.Int64Var(&cfg.PollInterval,"p", 2, "set poll interval")
 	flag.Int64Var(&cfg.ReportInterval,"r", 10, "set report interval")
@@ -28,9 +28,7 @@ func MustLoad() *Config {
 	cfg.PollInterval = getEnvAsInt64("POLL_INTERVAL", cfg.PollInterval)
 	cfg.ReportInterval = getEnvAsInt64("REPORT_INTERVAL", cfg.ReportInterval)
 
-	addr = getEnv("ADDRESS", addr)
-
-	cfg.Address = "http://" + addr
+	cfg.Address = "http://" + getEnv("ADDRESS", *addr)
 
 	return cfg
 }
