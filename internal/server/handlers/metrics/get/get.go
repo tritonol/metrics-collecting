@@ -15,14 +15,14 @@ const (
 	counter string = "counter"
 )
 
-type MetricGetter interface{
+type metricGetter interface{
 	GetCounter(name string) (int64, bool)
 	GetGauge(name string) (float64, bool)
-	GetAllGauge() (map[string]float64)
-	GetAllCounter() (map[string]int64)
+	GetAllGauge() map[string]float64
+	GetAllCounter() map[string]int64
 }
 
-func Get(storage MetricGetter) http.HandlerFunc {
+func Get(storage metricGetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		metricType := chi.URLParam(r, "type")
 		metricName := chi.URLParam(r, "name")
@@ -56,9 +56,9 @@ func Get(storage MetricGetter) http.HandlerFunc {
 	}
 }
 
-func MainPage(storage MetricGetter) http.HandlerFunc{
+func MainPage(storage metricGetter) http.HandlerFunc{
 	return func(w http.ResponseWriter, r *http.Request) {	
-		resp := make([]string, 0)
+		resp := make([]string, 0, 50)
 		for k, v := range storage.GetAllGauge() {
 			resp = append(resp, fmt.Sprintf("%s: %f", k, v))
 		}
