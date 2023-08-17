@@ -3,7 +3,6 @@ package get
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -27,32 +26,27 @@ func Get(storage metricGetter) http.HandlerFunc {
 		metricType := chi.URLParam(r, "type")
 		metricName := chi.URLParam(r, "name")
 
+		var metric interface{}
+		var ok bool
+
 		switch metricType {
 		case counter:
-			metric, ok := storage.GetCounter(metricName)
-			if !ok {
-				http.Error(w, "Cant find metric", http.StatusNotFound)
-				return
-			}
-			response := strconv.FormatInt(metric, 10)
-			w.Header().Set("Content-Type", "text/plain")
-			w.Write([]byte(response))
-			return
+			metric, ok = storage.GetCounter(metricName)
 		case gauge:
-			metric, ok := storage.GetGauge(metricName)
-			if !ok {
-				http.Error(w, "Cant find metric", http.StatusNotFound)
-				return
-			}
-			response := strconv.FormatFloat(metric, 'f', -1, 64)
-
-			w.Header().Set("Content-Type", "text/plain")
-			w.Write([]byte(response))
-			return
+			metric, ok = storage.GetGauge(metricName)
 		default:
 			http.Error(w, "Invalid metric type", http.StatusBadRequest)
 			return
 		}
+
+		if !ok {
+			http.Error(w, "Cant find metric", http.StatusNotFound)
+			return
+		}
+
+		response := fmt.Sprintf("%v", metric)
+		w.Header().Set("Content-Type", "text/plain")
+		w.Write([]byte(response))
 	}
 }
 
