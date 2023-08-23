@@ -97,8 +97,16 @@ func NewJSON(metricSaver MetricSaver) http.HandlerFunc {
 
 		switch metric.MType {
 		case gauge:
+			if metric.Value == nil {
+				http.Error(w, "Empty value", http.StatusBadRequest)
+				return
+			}
 			metricSaver.StoreGauge(metric.ID, *metric.Value)
 		case counter:
+			if metric.Delta == nil {
+				http.Error(w, "Empty value", http.StatusBadRequest)
+				return
+			}
 			metricSaver.IncrCounter(metric.ID, *metric.Delta)
 		default:
 			http.Error(w, "Invalid metric type", http.StatusBadRequest)
