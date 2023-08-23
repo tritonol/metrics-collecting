@@ -1,8 +1,12 @@
 package request
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
+
+	jsonstructs "github.com/tritonol/metrics-collecting.git/internal/structs/JSON"
 )
 
 type MetricRequest interface {
@@ -32,15 +36,53 @@ func sendMetric(serverAddress, metricType, metricName string, metricValue interf
 	}
 }
 
+func sendJSONMetrics(serverAddress, mtype, mname string, mvalue interface{}) {
+	url := fmt.Sprintf("%s/update/", serverAddress)
+	var body jsonstructs.Metrics
+
+	switch mtype {
+	case "gauge":
+		value := mvalue.(float64)
+
+		body.ID = mname
+		body.MType = mtype	
+		body.Value = &value	
+	case "counter":
+		value := mvalue.(int64)
+
+		body.ID = mname
+		body.MType = mtype	
+		body.Delta = &value	
+	}
+
+	data, err := json.Marshal(body)
+	if err != nil {
+		fmt.Println("Error marshaling JSON:", err)
+		return
+	}
+
+	resp, err := http.Post(url, "application/json", bytes.NewReader(data))
+	if err != nil {
+		fmt.Println("Error requesting metrics:", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		fmt.Println("Server returned non-200 status code:", resp.Status)
+		return
+	}
+}
+
 func Send(metricRequest MetricRequest, serverAddress string) {
 	gaugeMetrics := metricRequest.CollectGauge()
 	counterMetrics := metricRequest.CollectCounter()
 
 	for metric, value := range gaugeMetrics {
-		sendMetric(serverAddress, "gauge", metric, value)
+		sendJSONMetrics(serverAddress, "gauge", metric, value)
 	}
 
 	for metric, value := range counterMetrics {
-		sendMetric(serverAddress, "counter", metric, value)
+		sendJSONMetrics(serverAddress, "counter", metric, value)
 	}
 }
