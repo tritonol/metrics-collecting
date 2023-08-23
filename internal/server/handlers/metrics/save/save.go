@@ -1,14 +1,16 @@
 package save
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	jsonstructs "github.com/tritonol/metrics-collecting.git/internal/structs/JSON"
 )
 
 const (
-	gauge string = "gauge"
+	gauge   string = "gauge"
 	counter string = "counter"
 )
 
@@ -29,7 +31,7 @@ func New(metricSaver MetricSaver) http.HandlerFunc {
 			return
 		}
 
-		switch metricType{
+		switch metricType {
 		case gauge:
 			metricValue, err := strconv.ParseFloat(metricValue, 64)
 			if err != nil {
@@ -44,12 +46,37 @@ func New(metricSaver MetricSaver) http.HandlerFunc {
 				return
 			}
 			metricSaver.IncrCounter(metricName, metricValue)
-		default: 
+		default:
 			http.Error(w, "Invalid metric type", http.StatusBadRequest)
 			return
 		}
 
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		// w.WriteHeader(http.StatusOK)
+	}
+}
+
+func NewJSON(metricSaver MetricSaver) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var metric jsonstructs.Metrics
+
+		if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
+			http.Error(w, "Invalid JSON string", http.StatusBadRequest)
+			return
+		}
+
+		if metric.ID == "" {
+			http.Error(w, "missing param", http.StatusNotFound)
+			return
+		}
+
+		switch metric.MType {
+		case gauge:
+			metricSaver.StoreGauge(metric.ID, *metric.Value)
+		case counter:
+			metricSaver.IncrCounter(metric.ID, *metric.Delta)
+		default:
+			http.Error(w, "Invalid metric type", http.StatusBadRequest)
+			return
+		}
 	}
 }

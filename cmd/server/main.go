@@ -29,7 +29,12 @@ func MetricRouter() chi.Router {
 	storage := memstorage.NewMemStorage()
 
 	r.Post("/update/{type}/{name}/{value}", save.New(storage))
+	r.Post("/update/", save.NewJSON(storage))
+
 	r.Get("/value/{type}/{name}", get.Get(storage))
+	r.Post("/value/", get.GetJSON(storage))
+
 	r.Get("/", get.MainPage(storage))
+
 	return r
 }
