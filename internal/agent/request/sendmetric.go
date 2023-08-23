@@ -38,21 +38,26 @@ func sendMetric(serverAddress, metricType, metricName string, metricValue interf
 
 func sendJSONMetrics(serverAddress, mtype, mname string, mvalue interface{}) {
 	url := fmt.Sprintf("%s/update/", serverAddress)
+
 	var body jsonstructs.Metrics
+	var delta int64
+	var value float64
 
 	switch mtype {
 	case "gauge":
-		value := mvalue.(float64)
-
-		body.ID = mname
-		body.MType = mtype	
-		body.Value = &value	
+		value = mvalue.(float64)
 	case "counter":
-		value := mvalue.(int64)
+		delta = mvalue.(int64)
+	default:
+		fmt.Println("Invalid metric type")
+		return
+	}
 
-		body.ID = mname
-		body.MType = mtype	
-		body.Delta = &value	
+	body = jsonstructs.Metrics{
+		ID: mname,
+		MType: mtype,
+		Delta: &delta,
+		Value: &value,
 	}
 
 	data, err := json.Marshal(body)

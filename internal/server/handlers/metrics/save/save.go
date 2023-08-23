@@ -80,5 +80,6 @@ func NewJSON(metricSaver MetricSaver) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
 	}
 }
