@@ -78,7 +78,7 @@ func GetJSON(storage metricGetter) http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "appilcation/json")
+		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(metric)
 	}
 }
