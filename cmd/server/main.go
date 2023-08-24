@@ -4,13 +4,16 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/tritonol/metrics-collecting.git/internal/server/config"
 	"github.com/tritonol/metrics-collecting.git/internal/server/handlers/metrics/get"
 	"github.com/tritonol/metrics-collecting.git/internal/server/handlers/metrics/save"
 	"github.com/tritonol/metrics-collecting.git/internal/storage/memstorage"
 )
 
 func main() {
-	err := http.ListenAndServe(":8080", MetricRouter())
+	cfg := config.MustLoad()
+
+	err := http.ListenAndServe(cfg.Server.Address, MetricRouter())
 	if err != nil {
 		panic(err)
 	}
