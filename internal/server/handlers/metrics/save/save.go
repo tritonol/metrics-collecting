@@ -111,9 +111,10 @@ func NewJSON(metricSaver MetricSaver) http.HandlerFunc {
 		default:
 			http.Error(w, "Invalid metric type", http.StatusBadRequest)
 			return
-		}
+		} 
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(metric)
 	}
 }
