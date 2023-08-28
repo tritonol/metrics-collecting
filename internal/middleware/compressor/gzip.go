@@ -1,42 +1,40 @@
-package compress
+package compressor
 
 import (
+	"compress/gzip"
+	"io"
 	"net/http"
 	"strings"
-
-	"github.com/tritonol/metrics-collecting.git/internal/compressor"
 )
+
+type GzipResponseWriter struct {
+	io.Writer
+	http.ResponseWriter
+}
+
+func (grw GzipResponseWriter) Write(data []byte) (int, error) {
+	return grw.Writer.Write(data)
+}
 
 func GzipMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ow := w
-
 		acceptEncoding := r.Header.Get("Accept-Encoding")
-		supportsGzip := strings.Contains(acceptEncoding, "gzip")
-		contentType := r.Header.Get("Content-Type")
-
-
-		isValidContentType := strings.HasPrefix(contentType, "application/json") || strings.HasPrefix(contentType, "text/html")
-
-		if !supportsGzip && isValidContentType{
-			cw := compressor.NewCompressWriter(w)
-			ow = cw
-
-			defer cw.Close()
+		if !strings.Contains(acceptEncoding, "gzip") {
+			next.ServeHTTP(w, r)
+			return
 		}
 
-		contentEncoding := r.Header.Get("Content-Encoding")
-		sendsGzip := strings.Contains(contentEncoding, "gzip")
-		if sendsGzip {
-			cr, err := compressor.NewCompressReader(r.Body)
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			r.Body = cr
-			defer cr.Close()
+		w.Header().Set("Content-Encoding", "gzip")
+		w.Header().Set("Vary", "Accept-Encoding")
+
+		gzipWriter := gzip.NewWriter(w)
+		defer gzipWriter.Close()
+
+		gzipResponseWriter := GzipResponseWriter{
+			Writer:         gzipWriter,
+			ResponseWriter: w,
 		}
 
-		next.ServeHTTP(ow, r)
+		next.ServeHTTP(gzipResponseWriter, r)
 	})
 }
