@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	// "github.com/tritonol/metrics-collecting.git/internal/middleware/compressor"
+	compress "github.com/tritonol/metrics-collecting.git/internal/middleware/compressor"
 	middleware "github.com/tritonol/metrics-collecting.git/internal/middleware/logger/zap"
 	"github.com/tritonol/metrics-collecting.git/internal/server/config"
 	"github.com/tritonol/metrics-collecting.git/internal/server/handlers/metrics/get"
@@ -27,7 +27,7 @@ func MetricRouter() chi.Router {
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestLogger(logger))
-	// r.Use(compressor.GzipMiddleware)
+	r.Use(compress.GzipMiddleware)
 
 	storage := memstorage.NewMemStorage()
 
