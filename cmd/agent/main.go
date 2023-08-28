@@ -8,11 +8,6 @@ import (
 	"github.com/tritonol/metrics-collecting.git/internal/agent/request"
 )
 
-type MetricRequest interface {
-	gatherGauge()
-	gatherCounter()
-}
-
 func main() {
 	cfg := config.MustLoad()
 

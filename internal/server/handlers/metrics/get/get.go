@@ -3,7 +3,6 @@ package get
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -15,50 +14,45 @@ const (
 	counter string = "counter"
 )
 
-type MetricGetter interface{
+type metricGetter interface{
 	GetCounter(name string) (int64, bool)
 	GetGauge(name string) (float64, bool)
-	GetAllGauge() (map[string]float64)
-	GetAllCounter() (map[string]int64)
+	GetAllGauge() map[string]float64
+	GetAllCounter() map[string]int64
 }
 
-func Get(storage MetricGetter) http.HandlerFunc {
+func Get(storage metricGetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		metricType := chi.URLParam(r, "type")
 		metricName := chi.URLParam(r, "name")
 
+		var metric interface{}
+		var ok bool
+
 		switch metricType {
 		case counter:
-			metric, ok := storage.GetCounter(metricName)
-			if !ok {
-				http.Error(w, "Cant find metric", http.StatusNotFound)
-				return
-			}
-			response := strconv.FormatInt(metric, 10)
-			w.Header().Set("Content-Type", "text/plain")
-			w.Write([]byte(response))
-			return
+			metric, ok = storage.GetCounter(metricName)
 		case gauge:
-			metric, ok := storage.GetGauge(metricName)
-			if !ok {
-				http.Error(w, "Cant find metric", http.StatusNotFound)
-				return
-			}
-			response := strconv.FormatFloat(metric, 'f', -1, 64)
-
-			w.Header().Set("Content-Type", "text/plain")
-			w.Write([]byte(response))
-			return
+			metric, ok = storage.GetGauge(metricName)
 		default:
 			http.Error(w, "Invalid metric type", http.StatusBadRequest)
 			return
 		}
+
+		if !ok {
+			http.Error(w, "Cant find metric", http.StatusNotFound)
+			return
+		}
+
+		response := fmt.Sprintf("%v", metric)
+		w.Header().Set("Content-Type", "text/plain")
+		w.Write([]byte(response))
 	}
 }
 
-func MainPage(storage MetricGetter) http.HandlerFunc{
+func MainPage(storage metricGetter) http.HandlerFunc{
 	return func(w http.ResponseWriter, r *http.Request) {	
-		resp := make([]string, 0)
+		resp := make([]string, 0, 50)
 		for k, v := range storage.GetAllGauge() {
 			resp = append(resp, fmt.Sprintf("%s: %f", k, v))
 		}

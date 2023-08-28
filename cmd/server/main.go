@@ -12,7 +12,6 @@ import (
 
 func main() {
 	cfg := config.MustLoad()
-
 	err := http.ListenAndServe(cfg.Server.Address, MetricRouter())
 	if err != nil {
 		panic(err)
