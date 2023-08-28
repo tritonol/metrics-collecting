@@ -4,7 +4,8 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	middleware "github.com/tritonol/metrics-collecting.git/internal/middleware/logger/zap"
+	mvcompress "github.com/tritonol/metrics-collecting.git/internal/middleware/compress"
+	mvlog "github.com/tritonol/metrics-collecting.git/internal/middleware/logger/zap"
 	"github.com/tritonol/metrics-collecting.git/internal/server/config"
 	"github.com/tritonol/metrics-collecting.git/internal/server/handlers/metrics/get"
 	"github.com/tritonol/metrics-collecting.git/internal/server/handlers/metrics/save"
@@ -22,11 +23,13 @@ func main() {
 
 func MetricRouter() chi.Router {
 	logger, _ := zap.NewProduction()
+	storage := memstorage.NewMemStorage()
+
 	defer logger.Sync()
 
 	r := chi.NewRouter()
-	r.Use(middleware.RequestLogger(logger))
-	storage := memstorage.NewMemStorage()
+	r.Use(mvlog.RequestLogger(logger))
+	r.Use(mvcompress.GzipMiddleware)
 
 	r.Post("/update/{type}/{name}/{value}", save.New(storage))
 	r.Post("/update/", save.NewJSON(storage))
