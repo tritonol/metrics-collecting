@@ -1,4 +1,4 @@
-package compressor
+package compress
 
 import (
 	"net/http"
@@ -12,16 +12,11 @@ func GzipMiddleware(next http.Handler) http.Handler {
 		ow := w
 
 		acceptEncoding := r.Header.Get("Accept-Encoding")
-		contentType := r.Header.Get("Content-Type")
 		supportsGzip := strings.Contains(acceptEncoding, "gzip")
-
-		isValidContentType := strings.HasPrefix(contentType, "application/json") || strings.HasPrefix(contentType, "text/html")
-
-		if supportsGzip && isValidContentType {
+		if supportsGzip {
 			cw := compressor.NewCompressWriter(w)
 			ow = cw
 
-			// cw.Header().Set("Accept-Encoding", "gzip")
 			defer cw.Close()
 		}
 
