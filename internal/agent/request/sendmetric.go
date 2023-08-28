@@ -2,7 +2,6 @@ package request
 
 import (
 	"bytes"
-	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -39,7 +38,6 @@ func sendMetric(serverAddress, metricType, metricName string, metricValue interf
 
 func sendJSONMetrics(serverAddress, mtype, mname string, mvalue interface{}) {
 	url := fmt.Sprintf("%s/update/", serverAddress)
-	client := &http.Client{}
 
 	var body jsonstructs.Metrics
 	var delta int64
@@ -68,26 +66,9 @@ func sendJSONMetrics(serverAddress, mtype, mname string, mvalue interface{}) {
 		return
 	}
 
-	var compressedPayload bytes.Buffer
-	gzipWriter := gzip.NewWriter(&compressedPayload)
-	_, err = gzipWriter.Write(data)
+	resp, err := http.Post(url, "application/json", bytes.NewReader(data))
 	if err != nil {
-		fmt.Println("Error writing compressed data:", err)
-		return
-	}
-	gzipWriter.Close()
-
-	req, err := http.NewRequest(http.MethodPost, url, &compressedPayload)
-	if err != nil {
-		fmt.Println("Error creating request:", err)
-		return
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Content-Encoding", "gzip")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println("Error sending metrics:", err)
+		fmt.Println("Error requesting metrics:", err)
 		return
 	}
 	defer resp.Body.Close()
