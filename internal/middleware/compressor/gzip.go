@@ -18,11 +18,10 @@ func GzipMiddleware(next http.Handler) http.Handler {
 
 		isValidContentType := strings.HasPrefix(contentType, "application/json") || strings.HasPrefix(contentType, "text/html")
 
-		if supportsGzip && isValidContentType {
+		if !supportsGzip && isValidContentType{
 			cw := compressor.NewCompressWriter(w)
 			ow = cw
 
-			cw.Header().Set("Accept-Encoding", "gzip")
 			defer cw.Close()
 		}
 
