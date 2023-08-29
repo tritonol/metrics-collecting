@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/tritonol/metrics-collecting.git/internal/backup"
 	"github.com/tritonol/metrics-collecting.git/internal/routes"
@@ -29,22 +30,32 @@ func main() {
 		}
 	}
 
-	go backup.SaveMetricsPeriodically(cfg.Backup.StoreInterval, cfg.Backup.FilePath, storage)
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 
-	stopChan := make(chan os.Signal, 1)
-	signal.Notify(stopChan, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
+	if cfg.Backup.StoreInterval > 0 {
+		ticker := time.NewTicker(time.Duration(cfg.Backup.StoreInterval) * time.Second)
+		defer ticker.Stop()
 
-	go func() {
-		<-stopChan
-		err := backup.SaveMetricsToFile(cfg.Backup.FilePath, storage)
-		if err != nil {
-			logger.Error("Error save metric:", zap.Error(err))
+		for {
+			select {
+			case <-ticker.C:
+				if err := backup.SaveMetricsToFile(cfg.Backup.FilePath, storage); err != nil {
+                    logger.Error("Failed to save data to file", zap.Error(err))
+                } else {
+                    logger.Info("Data saved to file.")
+                }
+			case <-interrupt:
+				if err := backup.SaveMetricsToFile(cfg.Backup.FilePath, storage); err != nil {
+                    logger.Error("Failed to save data to file", zap.Error(err))
+				} else {
+                    logger.Info("Data saved to file and shutdown")
+                }
+
+				os.Exit(0)
+			}
 		}
-
-		logger.Info("Received interrupt signal. Saving data and shutting down")
-
-		os.Exit(0)
-	}()
+	}
 
 	err := http.ListenAndServe(cfg.Server.Address, routes.MetricRouter(storage, logger))
 	if err != nil {
