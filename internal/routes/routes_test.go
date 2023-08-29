@@ -1,13 +1,14 @@
-package main
+package routes
 
 import (
-    "io"
-    "net/http"
-    "net/http/httptest"
-    "testing"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"testing"
 
-    "github.com/stretchr/testify/assert"
-    "github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/tritonol/metrics-collecting.git/internal/storage/memstorage"
 )
 
 func testRequest(t *testing.T, ts *httptest.Server, method,
@@ -26,7 +27,7 @@ func testRequest(t *testing.T, ts *httptest.Server, method,
 }
 
 func TestRouter(t *testing.T) {
-	ts := httptest.NewServer(MetricRouter())
+	ts := httptest.NewServer(MetricRouter(memstorage.NewMemStorage()))
 
 	type want struct {
 		code        int
