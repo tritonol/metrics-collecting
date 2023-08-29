@@ -10,10 +10,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func MetricRouter(storage *memstorage.MemStorage) chi.Router {
-	logger, _ := zap.NewProduction()
-	defer logger.Sync()
-
+func MetricRouter(storage *memstorage.MemStorage, logger *zap.Logger) chi.Router {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestLogger(logger))
 	r.Use(compressor.GzipMiddleware)

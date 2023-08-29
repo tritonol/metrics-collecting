@@ -33,7 +33,6 @@ func SaveMetricsPeriodically(interval int64, filePath string, mg metricGetter) {
 		if err != nil {
 			fmt.Println("Error saving metrics:", err)
 		}
-		fmt.Println("CREATED !!!!!!")
 	}
 }
 
