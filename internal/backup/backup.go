@@ -14,10 +14,13 @@ type metricGetter interface {
 	SaveAllDataStructured(metrics map[string]jsonstructs.Metrics) error
 }
 
-func SaveMetricsToFile(filePath string, mg metricGetter) error {
+func SaveMetricsToFile(filePath string, mg metricGetter, sync bool) error {
 	file, err := os.Create(filePath)
 	if err != nil {
 		return err
+	}
+	if sync {
+		file.Sync()
 	}
 	defer file.Close()
 
