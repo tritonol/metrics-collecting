@@ -26,6 +26,10 @@ func (ms *MemStorage) IncrCounter(name string, value int64) {
 	ms.counterMetrics[name] += value
 }
 
+func (ms *MemStorage) StoreCounter(name string, value int64) {
+	ms.counterMetrics[name] = value
+}
+
 func (ms *MemStorage) GetCounter(name string) (int64, bool) {
 	resp, ok := ms.counterMetrics[name]
 	return resp, ok
@@ -70,7 +74,7 @@ func (ms *MemStorage) SaveAllDataStructured(metrics map[string]jsonstructs.Metri
 		case "gauge":
 			ms.StoreGauge(k, *v.Value)
 		case "counter":
-			ms.IncrCounter(k, *v.Delta)
+			ms.StoreCounter(k, *v.Delta)
 		default:
 			return fmt.Errorf("invalid type: %s", v.MType)
 		}
