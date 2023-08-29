@@ -20,6 +20,8 @@ func main() {
 	logger, _ := zap.NewProduction()
 	defer logger.Sync()
 
+	logger.Info("Server strat")
+
 	if cfg.Backup.Restore {
 		err := backup.RestoreMetricsFromFile(cfg.Backup.FilePath, storage)
 		if err != nil {
