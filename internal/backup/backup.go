@@ -31,7 +31,7 @@ func SaveMetricsToFile(filePath string, mg metricGetter, sync bool) error {
 func SaveMetricsPeriodically(interval int64, filePath string, mg metricGetter) {
 	for {
 		time.Sleep(time.Duration(interval) * time.Second)
-		err := SaveMetricsToFile(filePath, mg)
+		err := SaveMetricsToFile(filePath, mg, false)
 		if err != nil {
 			fmt.Println("Error saving metrics:", err)
 		}
