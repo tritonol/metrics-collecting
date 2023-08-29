@@ -16,7 +16,6 @@ type metricGetter interface {
 
 func SaveMetricsToFile(filePath string, mg metricGetter) error {
 	file, err := os.Create(filePath)
-	fmt.Println(file.Name())
 	if err != nil {
 		return err
 	}

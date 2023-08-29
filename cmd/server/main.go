@@ -30,7 +30,7 @@ func main() {
 	go backup.SaveMetricsPeriodically(cfg.Backup.StoreInterval, cfg.Backup.FilePath, storage)
 
 	stopChan := make(chan os.Signal, 1)
-	signal.Notify(stopChan, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(stopChan, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 
 	go func() {
 		<-stopChan
@@ -38,6 +38,8 @@ func main() {
 		if err != nil {
 			logger.Error("Error save metric:", zap.Error(err))
 		}
+
+		logger.Info("Received interrupt signal. Saving data and shutting down")
 
 		os.Exit(0)
 	}()
