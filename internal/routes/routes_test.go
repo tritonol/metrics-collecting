@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tritonol/metrics-collecting.git/internal/storage/memstorage"
+	"go.uber.org/zap"
 )
 
 func testRequest(t *testing.T, ts *httptest.Server, method,
@@ -27,7 +28,9 @@ func testRequest(t *testing.T, ts *httptest.Server, method,
 }
 
 func TestRouter(t *testing.T) {
-	ts := httptest.NewServer(MetricRouter(memstorage.NewMemStorage()))
+	storage := memstorage.NewMemStorage()
+	logger, _ := zap.NewProduction()
+	ts := httptest.NewServer(MetricRouter(storage, logger))
 
 	type want struct {
 		code        int
