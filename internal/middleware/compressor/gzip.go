@@ -24,22 +24,17 @@ func GzipMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		acceptTypes := r.Header.Get("Accept")
-		if strings.Contains(acceptTypes, "application/json") || strings.Contains(acceptTypes, "text/html") {
-			w.Header().Set("Content-Encoding", "gzip")
-			w.Header().Set("Vary", "Accept-Encoding")
+		w.Header().Set("Content-Encoding", "gzip")
+		w.Header().Set("Vary", "Accept-Encoding")
 
-			gzipWriter := gzip.NewWriter(w)
-			defer gzipWriter.Close()
+		gzipWriter := gzip.NewWriter(w)
+		defer gzipWriter.Close()
 
-			gzipResponseWriter := GzipResponseWriter{
-				Writer:         gzipWriter,
-				ResponseWriter: w,
-			}
-
-			next.ServeHTTP(gzipResponseWriter, r)
-		} else {
-			next.ServeHTTP(w, r)
+		gzipResponseWriter := GzipResponseWriter{
+			Writer:         gzipWriter,
+			ResponseWriter: w,
 		}
+
+		next.ServeHTTP(gzipResponseWriter, r)
 	})
 }
