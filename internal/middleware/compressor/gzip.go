@@ -24,6 +24,12 @@ func GzipMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
+		contentTypes := r.Header.Get("Content-Type")
+		if !strings.Contains(contentTypes, "application/json") || !strings.Contains(contentTypes, "text/html") {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		w.Header().Set("Content-Encoding", "gzip")
 		w.Header().Set("Vary", "Accept-Encoding")
 
