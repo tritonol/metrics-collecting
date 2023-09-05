@@ -54,12 +54,11 @@ func (bm *BackupManager) Start() {
 			}
 			os.Exit(0)
 			return
-		default:
-			if bm.saveInterval > 0 {
-				time.Sleep(bm.saveInterval)
-			}
+		case <-time.After(bm.saveInterval):
 			if err := bm.saveMetricsToFile(); err != nil {
 				bm.zapLogger.Error("Error saving metrics: ", zap.Error(err))
+			} else {
+				bm.zapLogger.Info("Metrics was saving")
 			}
 		}
 	}
