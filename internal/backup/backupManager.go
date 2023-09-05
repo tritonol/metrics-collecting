@@ -91,6 +91,7 @@ func (bm *BackupManager) saveMetricsToFile() error {
 		return err
 	}
 	defer file.Close()
+	file.Sync()
 
 	metrics := bm.storage.GetAllDataStructed()
 
