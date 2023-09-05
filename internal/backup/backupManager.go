@@ -39,7 +39,7 @@ func (bm *BackupManager) Start() {
 	for {
 		select {
 		case <-sigCh:
-			if err := bm.saveMetricsToFile(bm.saveInterval == 0); err != nil {
+			if err := bm.saveMetricsToFile(); err != nil {
 				bm.zapLogger.Error("Error saving metrics before shutdown: ", zap.Error(err))
 			} else {
 				bm.zapLogger.Info("Metrics was saving before shutdown")
@@ -48,7 +48,7 @@ func (bm *BackupManager) Start() {
 			return
 		case <-time.After(bm.saveInterval):
 			if bm.saveInterval > 0 {
-				if err := bm.saveMetricsToFile(true); err != nil {
+				if err := bm.saveMetricsToFile(); err != nil {
 					bm.zapLogger.Error("Error saving metrics: ", zap.Error(err))
 				} else {
 					bm.zapLogger.Info("Metrics was saving")
@@ -79,16 +79,12 @@ func (bm *BackupManager) Restore() error {
 	return nil
 }
 
-func (bm *BackupManager) saveMetricsToFile(sync bool) error {
+func (bm *BackupManager) saveMetricsToFile() error {
 	file, err := os.Create(bm.filePath)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
-
-	if sync {
-		file.Sync()
-	}
 
 	metrics := bm.storage.GetAllDataStructed()
 
