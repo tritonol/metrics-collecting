@@ -33,21 +33,21 @@ func NewBackupManager(storage MetricStorage, filePath string, saveInterval time.
 }
 
 func (bm *BackupManager) Start() {
-	// ticker := time.NewTicker(bm.saveInterval)
+	var sync bool
+
+	if bm.saveInterval == 0 {
+		sync = true
+	} else {
+		sync = false
+	}
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 
 	for {
 		select {
-		// case <-ticker.C :
-		// 	if err := bm.saveMetricsToFile(); err != nil {
-		// 		fmt.Printf("Error saving metrics: %v\n", err)
-		// 		bm.zapLogger.Error("Error saving metrics: ", zap.Error(err))
-		// 	}
-		// 	bm.zapLogger.Info("Metrics was saved")
 		case <-sigCh:
-			if err := bm.saveMetricsToFile(); err != nil {
+			if err := bm.saveMetricsToFile(sync); err != nil {
 				bm.zapLogger.Error("Error saving metrics before shutdown: ", zap.Error(err))
 			} else {
 				bm.zapLogger.Info("Metrics was saving before shutdown")
@@ -55,7 +55,7 @@ func (bm *BackupManager) Start() {
 			os.Exit(0)
 			return
 		case <-time.After(bm.saveInterval):
-			if err := bm.saveMetricsToFile(); err != nil {
+			if err := bm.saveMetricsToFile(sync); err != nil {
 				bm.zapLogger.Error("Error saving metrics: ", zap.Error(err))
 			} else {
 				bm.zapLogger.Info("Metrics was saving")
@@ -85,13 +85,16 @@ func (bm *BackupManager) Restore() error {
 	return nil
 }
 
-func (bm *BackupManager) saveMetricsToFile() error {
+func (bm *BackupManager) saveMetricsToFile(sync bool) error {
 	file, err := os.Create(bm.filePath)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
-	file.Sync()
+
+	if sync {
+		file.Sync()
+	}
 
 	metrics := bm.storage.GetAllDataStructed()
 
