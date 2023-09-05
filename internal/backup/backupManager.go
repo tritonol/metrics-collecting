@@ -33,21 +33,13 @@ func NewBackupManager(storage MetricStorage, filePath string, saveInterval time.
 }
 
 func (bm *BackupManager) Start() {
-	var sync bool
-
-	if bm.saveInterval == 0 {
-		sync = true
-	} else {
-		sync = false
-	}
-
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 
 	for {
 		select {
 		case <-sigCh:
-			if err := bm.saveMetricsToFile(sync); err != nil {
+			if err := bm.saveMetricsToFile(bm.saveInterval == 0); err != nil {
 				bm.zapLogger.Error("Error saving metrics before shutdown: ", zap.Error(err))
 			} else {
 				bm.zapLogger.Info("Metrics was saving before shutdown")
@@ -55,7 +47,7 @@ func (bm *BackupManager) Start() {
 			os.Exit(0)
 			return
 		case <-time.After(bm.saveInterval):
-			if err := bm.saveMetricsToFile(sync); err != nil {
+			if err := bm.saveMetricsToFile(true); err != nil {
 				bm.zapLogger.Error("Error saving metrics: ", zap.Error(err))
 			} else {
 				bm.zapLogger.Info("Metrics was saving")
