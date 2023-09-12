@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -21,6 +22,7 @@ type BackupManager struct {
 	filePath     string
 	saveInterval time.Duration
 	zapLogger    *zap.Logger
+	mu           sync.Mutex
 }
 
 func NewBackupManager(storage MetricStorage, filePath string, saveInterval time.Duration, zapLogger *zap.Logger) *BackupManager {
@@ -59,6 +61,8 @@ func (bm *BackupManager) Start() {
 }
 
 func (bm *BackupManager) Restore() error {
+	bm.mu.Lock()
+	defer bm.mu.Unlock()
 	file, err := os.Open(bm.filePath)
 	if err != nil {
 		return err
@@ -80,10 +84,13 @@ func (bm *BackupManager) Restore() error {
 }
 
 func (bm *BackupManager) saveMetricsToFile() error {
+	bm.mu.Lock()
+	defer bm.mu.Unlock()
 	file, err := os.Create(bm.filePath)
 	if err != nil {
 		return err
 	}
+	// file.Sync()
 	defer file.Close()
 
 	metrics := bm.storage.GetAllDataStructed()
@@ -92,6 +99,7 @@ func (bm *BackupManager) saveMetricsToFile() error {
 	if err := encoder.Encode(metrics); err != nil {
 		return err
 	}
+
 
 	return nil
 }
