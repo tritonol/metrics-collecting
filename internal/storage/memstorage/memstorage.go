@@ -4,97 +4,96 @@ import (
 	"fmt"
 	"sync"
 
-	jsonstructs "github.com/tritonol/metrics-collecting.git/internal/structs/JSON"
+	m "github.com/tritonol/metrics-collecting.git/internal/structs/JSON"
+)
+
+const (
+	Gauge   m.MetricType = "gauge"
+	Counter m.MetricType = "counter"
 )
 
 type MemStorage struct {
-	gaugeMetrics   map[string]float64
-	counterMetrics map[string]int64
-	mu             sync.Mutex
+	metrics map[string]m.Metric
+	mu      sync.RWMutex
 }
 
 func NewMemStorage() *MemStorage {
 	return &MemStorage{
-		gaugeMetrics:   make(map[string]float64),
-		counterMetrics: make(map[string]int64),
+		metrics: make(map[string]m.Metric),
 	}
 }
 
-func (ms *MemStorage) StoreGauge(name string, value float64) {
+func (ms *MemStorage) StoreMetric(name string, mType string, value float64, delta int64) {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
-	ms.gaugeMetrics[name] = value
-}
 
-func (ms *MemStorage) IncrCounter(name string, value int64) {
-	ms.mu.Lock()
-	defer ms.mu.Unlock()
-	ms.counterMetrics[name] += value
-}
-
-func (ms *MemStorage) StoreCounter(name string, value int64) {
-	ms.mu.Lock()
-	defer ms.mu.Unlock()
-	ms.counterMetrics[name] = value
-}
-
-func (ms *MemStorage) GetCounter(name string) (int64, bool) {
-	ms.mu.Lock()
-	defer ms.mu.Unlock()
-	resp, ok := ms.counterMetrics[name]
-	return resp, ok
-}
-
-func (ms *MemStorage) GetGauge(name string) (float64, bool) {
-	ms.mu.Lock()
-	defer ms.mu.Unlock()
-	resp, ok := ms.gaugeMetrics[name]
-	return resp, ok
-}
-
-func (ms *MemStorage) GetAllGauge() map[string]float64 {
-	ms.mu.Lock()
-	defer ms.mu.Unlock()
-	return ms.gaugeMetrics
-}
-
-func (ms *MemStorage) GetAllCounter() map[string]int64 {
-	ms.mu.Lock()
-	defer ms.mu.Unlock()
-	return ms.counterMetrics
-}
-
-func (ms *MemStorage) GetAllDataStructed() map[string]jsonstructs.Metrics {
-	data := make(map[string]jsonstructs.Metrics, 30)
-	for k, v := range ms.GetAllGauge() {
-		data[k] = jsonstructs.Metrics{
-			ID:    k,
-			MType: "gauge",
-			Value: &v,
+	if existingMetric, ok := ms.metrics[name]; ok && existingMetric.Type == Counter {
+		existingMetric.Delta += delta
+		ms.metrics[name] = existingMetric
+	} else {
+		ms.metrics[name] = m.Metric{
+			Type:  m.MetricType(mType),
+			Value: value,
+			Delta: delta,
 		}
 	}
-	for k, v := range ms.GetAllCounter() {
-		data[k] = jsonstructs.Metrics{
-			ID:    k,
-			MType: "counter",
-			Delta: &v,
+}
+
+func (ms *MemStorage) GetMetrics() map[string]m.Metric {
+	ms.mu.RLock()
+	defer ms.mu.RUnlock()
+
+	return ms.metrics
+}
+
+func (ms *MemStorage) GetMetric(name string, mType string) (m.Metric, error) {
+	ms.mu.RLock()
+	defer ms.mu.RUnlock()
+
+	metric, ok := ms.metrics[name]
+	if !ok || metric.Type != m.MetricType(mType) {
+		return m.Metric{}, fmt.Errorf("metric not found for name '%s' and type '%s'", name, mType)
+	}
+
+	return metric, nil
+}
+
+func (ms *MemStorage) GetAllDataStructed() map[string]m.Metrics {
+	ms.mu.RLock()
+	defer ms.mu.RUnlock()
+
+	data := make(map[string]m.Metrics)
+
+	for name, metric := range ms.metrics {
+		newMetric := metric
+		data[name] = m.Metrics{
+			ID:    name,
+			MType: string(metric.Type),
+			Value: &newMetric.Value,
+			Delta: &newMetric.Delta,
 		}
 	}
 
 	return data
 }
 
-func (ms *MemStorage) SaveAllDataStructured(metrics map[string]jsonstructs.Metrics) error {
-	for k, v := range metrics {
-		switch v.MType {
+func (ms *MemStorage) SaveAllDataStructured(metrics map[string]m.Metrics) error {
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
+
+	for name, metric := range metrics {
+		switch metric.MType {
 		case "gauge":
-			ms.StoreGauge(k, *v.Value)
+			ms.metrics[name] = m.Metric{
+				Type:  m.MetricType(metric.MType),
+				Value: *metric.Value,
+			}
 		case "counter":
-			ms.StoreCounter(k, *v.Delta)
-		default:
-			return fmt.Errorf("invalid type: %s", v.MType)
+			ms.metrics[name] = m.Metric{
+				Type:  m.MetricType(metric.MType),
+				Delta: *metric.Delta,
+			}
 		}
 	}
-
 	return nil
 }

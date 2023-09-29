@@ -20,8 +20,7 @@ func main() {
 
 	logger.Info("Server strat")
 
-	backupManager := backup.NewBackupManager(storage, cfg.Backup.FilePath, time.Duration(cfg.Backup.StoreInterval) * time.Second, logger)
-
+	backupManager := backup.NewBackupManager(storage, cfg.Backup.FilePath, time.Duration(cfg.Backup.StoreInterval)*time.Second, logger)
 	if cfg.Backup.Restore {
 		if err := backupManager.Restore(); err != nil {
 			logger.Error("Error restoring metrics:", zap.Error(err))
@@ -30,37 +29,6 @@ func main() {
 	}
 
 	go backupManager.Start()
-
-	// if cfg.Backup.Restore {
-	// 	err := backup.RestoreMetricsFromFile(cfg.Backup.FilePath, storage)
-	// 	if err != nil {
-	// 		logger.Error("Error restoring metrics:", zap.Error(err))
-	// 	}
-	// }
-
-	// interrupt := make(chan os.Signal, 1)
-	// signal.Notify(interrupt, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
-
-	// go func() {
-	// 	for {
-	// 		select {
-	// 		case <-time.After(time.Duration(cfg.Backup.StoreInterval) * time.Second):
-	// 			if err := backup.SaveMetricsToFile(cfg.Backup.FilePath, storage, cfg.Backup.StoreInterval == 0); err != nil {
-	// 				logger.Error("Failed to save data: ", zap.Error(err))
-	// 			} else {
-	// 				logger.Info("Data saved to file.")
-	// 			}
-	// 		case <-interrupt:
-	// 			if err := backup.SaveMetricsToFile(cfg.Backup.FilePath, storage, true); err != nil {
-	// 				logger.Error("Failed to save data: ", zap.Error(err))
-	// 			} else {
-	// 				logger.Info("Data saved to file before shutdown.")
-	// 			}
-
-	// 			os.Exit(0)
-	// 		}
-	// 	}
-	// }()
 
 	err := http.ListenAndServe(cfg.Server.Address, routes.MetricRouter(storage, logger))
 	if err != nil {

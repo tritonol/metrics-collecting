@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
 
@@ -22,7 +21,6 @@ type BackupManager struct {
 	filePath     string
 	saveInterval time.Duration
 	zapLogger    *zap.Logger
-	mu           sync.Mutex
 }
 
 func NewBackupManager(storage MetricStorage, filePath string, saveInterval time.Duration, zapLogger *zap.Logger) *BackupManager {
@@ -49,20 +47,17 @@ func (bm *BackupManager) Start() {
 			os.Exit(0)
 			return
 		case <-time.After(bm.saveInterval):
-			if bm.saveInterval > 0 {
-				if err := bm.saveMetricsToFile(); err != nil {
-					bm.zapLogger.Error("Error saving metrics: ", zap.Error(err))
-				} else {
-					bm.zapLogger.Info("Metrics was saving")
-				}
+
+			if err := bm.saveMetricsToFile(); err != nil {
+				bm.zapLogger.Error("Error saving metrics: ", zap.Error(err))
+			} else {
+				bm.zapLogger.Info("Metrics was saving")
 			}
 		}
 	}
 }
 
 func (bm *BackupManager) Restore() error {
-	bm.mu.Lock()
-	defer bm.mu.Unlock()
 	file, err := os.Open(bm.filePath)
 	if err != nil {
 		return err
@@ -84,8 +79,6 @@ func (bm *BackupManager) Restore() error {
 }
 
 func (bm *BackupManager) saveMetricsToFile() error {
-	bm.mu.Lock()
-	defer bm.mu.Unlock()
 	file, err := os.Create(bm.filePath)
 	if err != nil {
 		return err
@@ -99,7 +92,6 @@ func (bm *BackupManager) saveMetricsToFile() error {
 	if err := encoder.Encode(metrics); err != nil {
 		return err
 	}
-
 
 	return nil
 }
