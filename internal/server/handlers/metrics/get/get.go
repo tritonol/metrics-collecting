@@ -72,7 +72,7 @@ func GetJSON(storage metricGetter) http.HandlerFunc {
 			metric.Delta = &rawMetric.Delta
 		}
 
-		if (err != nil) {
+		if err != nil {
 			http.Error(w, "Cant find metric", http.StatusNotFound)
 			return
 		}
