@@ -1,10 +1,10 @@
 package backup
 
 import (
+	"context"
 	"encoding/json"
 	"os"
-	"os/signal"
-	"syscall"
+	"sync"
 	"time"
 
 	jsonstructs "github.com/tritonol/metrics-collecting.git/internal/structs/JSON"
@@ -32,22 +32,18 @@ func NewBackupManager(storage MetricStorage, filePath string, saveInterval time.
 	}
 }
 
-func (bm *BackupManager) Start() {
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
-
+func (bm *BackupManager) Start(ctx context.Context, wg *sync.WaitGroup) {
+	defer wg.Done()
 	for {
 		select {
-		case <-sigCh:
+		case <-ctx.Done():
 			if err := bm.saveMetricsToFile(); err != nil {
 				bm.zapLogger.Error("Error saving metrics before shutdown: ", zap.Error(err))
 			} else {
 				bm.zapLogger.Info("Metrics was saving before shutdown")
 			}
-			os.Exit(0)
 			return
 		case <-time.After(bm.saveInterval):
-
 			if err := bm.saveMetricsToFile(); err != nil {
 				bm.zapLogger.Error("Error saving metrics: ", zap.Error(err))
 			} else {
@@ -83,7 +79,6 @@ func (bm *BackupManager) saveMetricsToFile() error {
 	if err != nil {
 		return err
 	}
-	// file.Sync()
 	defer file.Close()
 
 	metrics := bm.storage.GetAllDataStructed()
