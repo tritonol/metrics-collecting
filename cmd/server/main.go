@@ -60,6 +60,7 @@ func main() {
 	err := server.ListenAndServe()
 	if err != nil && err != http.ErrServerClosed {
 		logger.Fatal("", zap.Error(err))
+		cancel()
 	}
 	wg.Wait()
 }
