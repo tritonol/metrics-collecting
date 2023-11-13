@@ -2,38 +2,37 @@ package pgstorage
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type postgres struct {
+type Postgres struct {
 	db *pgxpool.Pool
 }
 
 var (
-	pgInstance *postgres
+	pgInstance *Postgres
 	pgOnce     sync.Once
 )
 
-func NewPg(ctx context.Context, connString string) (*postgres, error) {
+func NewPg(ctx context.Context, connString string) (*Postgres, error) {
 	pgOnce.Do(func() {
 		db, err := pgxpool.New(ctx, connString)
 		if err != nil {
-			return fmt.Errorf("Unable to create connection pool: %w", err)
+			return
 		}
 
-		pgInstance = &postgres{db}
+		pgInstance = &Postgres{db}
 	})
 
 	return pgInstance, nil
 }
 
-func (pg *postgres) Ping(ctx context.Context) error {
+func (pg *Postgres) Ping(ctx context.Context) error {
 	return pg.db.Ping(ctx)
 }
 
-func (pg *postgres) Close() {
+func (pg *Postgres) Close() {
 	pg.db.Close()
 }

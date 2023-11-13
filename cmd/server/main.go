@@ -13,17 +13,27 @@ import (
 	"github.com/tritonol/metrics-collecting.git/internal/routes"
 	"github.com/tritonol/metrics-collecting.git/internal/server/config"
 	"github.com/tritonol/metrics-collecting.git/internal/storage/memstorage"
+	"github.com/tritonol/metrics-collecting.git/internal/storage/pgstorage"
 	"go.uber.org/zap"
 )
 
 func main() {
 	cfg := config.MustLoad()
-	storage := memstorage.NewMemStorage()
 
 	logger, _ := zap.NewProduction()
 	defer logger.Sync()
 
-	server := &http.Server{Addr: cfg.Server.Address, Handler: routes.MetricRouter(storage, logger)}
+	storage := memstorage.NewMemStorage()
+
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+
+	db, err := pgstorage.NewPg(ctx, cfg.Db.ConnString)
+	if err != nil {
+		logger.Error("Can`t connect db", zap.Error(err))
+	}
+
+	server := &http.Server{Addr: cfg.Server.Address, Handler: routes.MetricRouter(ctx, db, storage, logger)}
 
 	logger.Info("Server strat")
 
@@ -31,10 +41,6 @@ func main() {
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
-
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	// ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	backupManager := backup.NewBackupManager(storage, cfg.Backup.FilePath, time.Duration(cfg.Backup.StoreInterval)*time.Second, logger)
 	if cfg.Backup.Restore {
@@ -57,7 +63,7 @@ func main() {
 		cancel()
 	}()
 
-	err := server.ListenAndServe()
+	err = server.ListenAndServe()
 	if err != nil && err != http.ErrServerClosed {
 		logger.Fatal("", zap.Error(err))
 		cancel()
