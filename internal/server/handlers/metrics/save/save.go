@@ -19,8 +19,7 @@ const (
 )
 
 type MetricSaver interface {
-	StoreGauge(name string, value float64)
-	IncrCounter(name string, value int64)
+	StoreMetric(name string, mType string, value float64, delta int64)
 }
 
 func New(metricSaver MetricSaver) http.HandlerFunc {
@@ -42,14 +41,14 @@ func New(metricSaver MetricSaver) http.HandlerFunc {
 				http.Error(w, "Invalid metric value", http.StatusBadRequest)
 				return
 			}
-			metricSaver.StoreGauge(metricName, metricValue)
+			metricSaver.StoreMetric(metricName, metricType, metricValue, 0)
 		case counter:
 			metricValue, err := strconv.ParseInt(metricValue, 10, 64)
 			if err != nil {
 				http.Error(w, "Invalid metric value", http.StatusBadRequest)
 				return
 			}
-			metricSaver.IncrCounter(metricName, metricValue)
+			metricSaver.StoreMetric(metricName, metricType, 0, metricValue)
 		default:
 			http.Error(w, "Invalid metric type", http.StatusBadRequest)
 			return
@@ -101,13 +100,13 @@ func NewJSON(metricSaver MetricSaver) http.HandlerFunc {
 				http.Error(w, "Empty value", http.StatusBadRequest)
 				return
 			}
-			metricSaver.StoreGauge(metric.ID, *metric.Value)
+			metricSaver.StoreMetric(metric.ID, metric.MType, *metric.Value, 0)
 		case counter:
 			if metric.Delta == nil {
 				http.Error(w, "Empty value", http.StatusBadRequest)
 				return
 			}
-			metricSaver.IncrCounter(metric.ID, *metric.Delta)
+			metricSaver.StoreMetric(metric.ID, metric.MType, 0, *metric.Delta)
 		default:
 			http.Error(w, "Invalid metric type", http.StatusBadRequest)
 			return

@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
-	jsonstructs "github.com/tritonol/metrics-collecting.git/internal/structs/JSON"
+	m "github.com/tritonol/metrics-collecting.git/internal/structs/JSON"
 )
 
 const (
@@ -17,36 +17,36 @@ const (
 )
 
 type metricGetter interface {
-	GetCounter(name string) (int64, bool)
-	GetGauge(name string) (float64, bool)
-	GetAllGauge() map[string]float64
-	GetAllCounter() map[string]int64
+	GetMetrics() map[string]m.Metric
+	GetMetric(name string, mType string) (m.Metric, error)
 }
 
 func Get(storage metricGetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		metricType := chi.URLParam(r, "type")
 		metricName := chi.URLParam(r, "name")
-
-		var metric interface{}
-		var ok bool
+		
+		var err error
+		var metric m.Metric
+		var response string
 
 		switch metricType {
 		case counter:
-			metric, ok = storage.GetCounter(metricName)
+			metric, err = storage.GetMetric(metricName, counter)
+			response = fmt.Sprintf("%v", metric.Delta)
 		case gauge:
-			metric, ok = storage.GetGauge(metricName)
+			metric, err = storage.GetMetric(metricName, gauge)
+			response = fmt.Sprintf("%v", metric.Value)
 		default:
 			http.Error(w, "Invalid metric type", http.StatusBadRequest)
 			return
 		}
 
-		if !ok {
+		if err != nil {
 			http.Error(w, "Cant find metric", http.StatusNotFound)
 			return
 		}
 
-		response := fmt.Sprintf("%v", metric)
 		w.Header().Set("Content-Type", "text/plain")
 		w.Write([]byte(response))
 	}
@@ -54,10 +54,9 @@ func Get(storage metricGetter) http.HandlerFunc {
 
 func GetJSON(storage metricGetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var ok bool
-		var value float64
-		var delta int64
-		var metric jsonstructs.Metrics
+		var err error
+		var rawMetric m.Metric
+		var metric m.Metrics
 
 		if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
 			http.Error(w, "Invalid JSON string", http.StatusBadRequest)
@@ -66,14 +65,14 @@ func GetJSON(storage metricGetter) http.HandlerFunc {
 
 		switch metric.MType {
 		case gauge:
-			value, ok = storage.GetGauge(metric.ID)
-			metric.Value = &value
+			rawMetric, err = storage.GetMetric(metric.ID, "gauge")
+			metric.Value = &rawMetric.Value
 		case counter:
-			delta, ok = storage.GetCounter(metric.ID)
-			metric.Delta = &delta
+			rawMetric, err = storage.GetMetric(metric.ID, "counter")
+			metric.Delta = &rawMetric.Delta
 		}
 
-		if !ok {
+		if err != nil {
 			http.Error(w, "Cant find metric", http.StatusNotFound)
 			return
 		}
@@ -86,11 +85,15 @@ func GetJSON(storage metricGetter) http.HandlerFunc {
 func MainPage(storage metricGetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		resp := make([]string, 0, 50)
-		for k, v := range storage.GetAllGauge() {
-			resp = append(resp, fmt.Sprintf("%s: %f", k, v))
-		}
-		for k, v := range storage.GetAllCounter() {
-			resp = append(resp, fmt.Sprintf("%s: %d", k, v))
+		data := storage.GetMetrics()
+
+		for k, v := range data {
+			switch v.Type {
+			case "gauge":
+				resp = append(resp, fmt.Sprintf("%s: %f", k, v.Value))
+			case "counter":
+				resp = append(resp, fmt.Sprintf("%s: %d", k, v.Delta))
+			}
 		}
 
 		render.HTML(w, r, strings.Join(resp, "\n"))

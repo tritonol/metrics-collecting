@@ -1,43 +1,66 @@
 package main
 
 import (
+	"context"
 	"net/http"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
+	"time"
 
-	"github.com/go-chi/chi/v5"
-	compress "github.com/tritonol/metrics-collecting.git/internal/middleware/compressor"
-	middleware "github.com/tritonol/metrics-collecting.git/internal/middleware/logger/zap"
+	"github.com/tritonol/metrics-collecting.git/internal/backup"
+	"github.com/tritonol/metrics-collecting.git/internal/routes"
 	"github.com/tritonol/metrics-collecting.git/internal/server/config"
-	"github.com/tritonol/metrics-collecting.git/internal/server/handlers/metrics/get"
-	"github.com/tritonol/metrics-collecting.git/internal/server/handlers/metrics/save"
 	"github.com/tritonol/metrics-collecting.git/internal/storage/memstorage"
 	"go.uber.org/zap"
 )
 
 func main() {
 	cfg := config.MustLoad()
-	err := http.ListenAndServe(cfg.Server.Address, MetricRouter())
-	if err != nil {
-		panic(err)
-	}
-}
+	storage := memstorage.NewMemStorage()
 
-func MetricRouter() chi.Router {
 	logger, _ := zap.NewProduction()
 	defer logger.Sync()
 
-	r := chi.NewRouter()
-	r.Use(middleware.RequestLogger(logger))
-	r.Use(compress.GzipMiddleware)
+	server := &http.Server{Addr: cfg.Server.Address, Handler: routes.MetricRouter(storage, logger)}
 
-	storage := memstorage.NewMemStorage()
+	logger.Info("Server strat")
 
-	r.Post("/update/{type}/{name}/{value}", save.New(storage))
-	r.Post("/update/", save.NewJSON(storage))
+	var wg sync.WaitGroup
 
-	r.Get("/value/{type}/{name}", get.Get(storage))
-	r.Post("/value/", get.GetJSON(storage))
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
-	r.Get("/", get.MainPage(storage))
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	// ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
-	return r
+	backupManager := backup.NewBackupManager(storage, cfg.Backup.FilePath, time.Duration(cfg.Backup.StoreInterval)*time.Second, logger)
+	if cfg.Backup.Restore {
+		if err := backupManager.Restore(); err != nil {
+			logger.Error("Error restoring metrics:", zap.Error(err))
+		} else {
+			logger.Info("Data was restored")
+		}
+	}
+
+	wg.Add(1)
+	go backupManager.Start(ctx, &wg)
+
+	go func() {
+		<-sig
+		err := server.Shutdown(ctx)
+		if err != nil {
+			logger.Fatal("", zap.Error(err))
+		}
+		cancel()
+	}()
+
+	err := server.ListenAndServe()
+	if err != nil && err != http.ErrServerClosed {
+		logger.Fatal("", zap.Error(err))
+		cancel()
+	}
+	wg.Wait()
 }
