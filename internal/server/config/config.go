@@ -8,7 +8,7 @@ import (
 type Config struct {
 	Server HTTPServer
 	Backup Backup
-	Db	Db
+	DB	DB
 }
 
 type HTTPServer struct {
@@ -21,7 +21,7 @@ type Backup struct{
 	Restore bool
 }
 
-type Db struct {
+type DB struct {
 	ConnString string
 }
 
@@ -31,14 +31,14 @@ func MustLoad() *Config {
 	flag.StringVar(&cfg.Backup.FilePath, "f", "/tmp/metrics-db.json", "Path to backup file")
 	flag.BoolVar(&cfg.Backup.Restore, "r", true, "Load previously saved values from file")
 	flag.Int64Var(&cfg.Backup.StoreInterval, "i", 300, "Backup interval")
-	flag.StringVar(&cfg.Db.ConnString, "d", "", "Pg connection string")
+	flag.StringVar(&cfg.DB.ConnString, "d", "", "Pg connection string")
 	flag.Parse()
 
 	if envAddr := os.Getenv("ADDRESS"); envAddr != "" {
 		cfg.Server.Address = envAddr
 	}
-	if envDbDSN := os.Getenv("DATABASE_DSN"); envDbDSN != "" {
-		cfg.Db.ConnString = envDbDSN
+	if envDBDSN := os.Getenv("DATABASE_DSN"); envDBDSN != "" {
+		cfg.DB.ConnString = envDBDSN
 	}
 
 	return &cfg

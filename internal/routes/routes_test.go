@@ -35,7 +35,7 @@ func TestRouter(t *testing.T) {
 	storage := memstorage.NewMemStorage()
 	logger, _ := zap.NewProduction()
 	ctx := context.Background()
-	db, err := pgstorage.NewPg(ctx, cfg.Db.ConnString)
+	db, err := pgstorage.NewPg(ctx, cfg.DB.ConnString)
 	if err != nil {
 		return
 	}

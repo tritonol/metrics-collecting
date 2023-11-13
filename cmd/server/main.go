@@ -28,7 +28,7 @@ func main() {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 
-	db, err := pgstorage.NewPg(ctx, cfg.Db.ConnString)
+	db, err := pgstorage.NewPg(ctx, cfg.DB.ConnString)
 	if err != nil {
 		logger.Error("Can`t connect db", zap.Error(err))
 	}
