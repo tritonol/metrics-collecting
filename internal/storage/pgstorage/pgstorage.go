@@ -2,6 +2,7 @@ package pgstorage
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -35,4 +36,22 @@ func (pg *Postgres) Ping(ctx context.Context) error {
 
 func (pg *Postgres) Close() {
 	pg.db.Close()
+}
+
+func (pg *Postgres) CreateMetricTable(ctx context.Context) error{
+	_, err := pg.db.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS metrics (
+			id serial primary key,
+			name varchar(128) not null,
+			type varchar(32) not null,
+			delta double precision,
+			value integer
+		);
+	`)
+
+	if err != nil {
+		return fmt.Errorf("cant create table: %w", err)
+	}
+
+	return nil
 }

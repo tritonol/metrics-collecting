@@ -33,6 +33,11 @@ func main() {
 		logger.Error("Can`t connect db", zap.Error(err))
 	}
 
+	err = db.CreateMetricTable(ctx)
+	if err != nil {
+		logger.Fatal("", zap.Error(err))
+	}
+
 	server := &http.Server{Addr: cfg.Server.Address, Handler: routes.MetricRouter(ctx, db, storage, logger)}
 
 	logger.Info("Server strat")
