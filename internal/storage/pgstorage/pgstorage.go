@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	m "github.com/tritonol/metrics-collecting.git/internal/structs/JSON"
 )
 
 type Postgres struct {
@@ -38,14 +39,14 @@ func (pg *Postgres) Close() {
 	pg.db.Close()
 }
 
-func (pg *Postgres) CreateMetricTable(ctx context.Context) error{
+func (pg *Postgres) CreateMetricTable(ctx context.Context) error {
 	_, err := pg.db.Exec(ctx, `
 		CREATE TABLE IF NOT EXISTS metrics (
-			id serial primary key,
 			name varchar(128) not null,
 			type varchar(32) not null,
 			delta double precision,
-			value integer
+			value integer,
+			primary key(name,type)
 		);
 	`)
 
@@ -54,4 +55,61 @@ func (pg *Postgres) CreateMetricTable(ctx context.Context) error{
 	}
 
 	return nil
+}
+
+func (pg *Postgres) StoreMetric(ctx context.Context, name string, mType string, value float64, delta int64) error{
+	_, err := pg.db.Exec(ctx, `
+		INSERT INTO metrics(name, type, delta, value)
+		VALUES($1, $2, $3, $4)
+		ON CONFLICT (name,type)
+		DO
+			UPDATE SET delta = $3, value = $4 WHERE name = $1 AND type = $2
+	`, name, mType, delta, value)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (pg *Postgres) GetMetric(ctx context.Context, name string, mType string) (m.Metric, error) {
+	metric := m.Metric{}
+
+	row := pg.db.QueryRow(ctx, `
+		SELECT delta, value, type FROM metrics WHERE name = $1 AND type = $2  
+	`, name, mType)
+
+	err := row.Scan(&metric.Delta, &metric.Value, &metric.Type)
+	if err != nil {
+		return m.Metric{}, err
+	}
+
+	return metric, nil
+}
+
+func (pg *Postgres) GetMetrics(ctx context.Context) (map[string]m.Metric, error) {
+	metrics := make(map[string]m.Metric, 20)
+	rows, err := pg.db.Query(ctx, `SELECT name, delta, value, type FROM metrics`)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var m m.Metric
+		var name string
+
+		rows.Scan(&name, &m.Delta, &m.Value, &m.Type)
+		metrics[name] = m
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+
+	return metrics, err
 }

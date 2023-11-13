@@ -19,13 +19,13 @@ func MetricRouter(ctx context.Context, db *pgstorage.Postgres, storage *memstora
 	r.Use(middleware.RequestLogger(logger))
 	r.Use(compressor.GzipMiddleware)
 
-	r.Post("/update/{type}/{name}/{value}", save.New(storage))
-	r.Post("/update/", save.NewJSON(storage))
+	r.Post("/update/{type}/{name}/{value}", save.New(db))
+	r.Post("/update/", save.NewJSON(db))
 
-	r.Get("/value/{type}/{name}", get.Get(storage))
-	r.Post("/value/", get.GetJSON(storage))
+	r.Get("/value/{type}/{name}", get.Get(db))
+	r.Post("/value/", get.GetJSON(db))
 
-	r.Get("/", get.MainPage(storage))
+	r.Get("/", get.MainPage(db))
 
 	r.Get("/ping", statuscheck.Ping(ctx, db))
 
