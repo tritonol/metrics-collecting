@@ -99,8 +99,6 @@ func SendBatch(metricRequest MetricRequest, serverAddress string) {
 		})
 	}
 
-	fmt.Println(metrics)
-
 	var buf bytes.Buffer
 	err := json.NewEncoder(&buf).Encode(metrics)
 	if err != nil {
