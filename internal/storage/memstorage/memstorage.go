@@ -104,3 +104,14 @@ func (ms *MemStorage) SaveAllDataStructured(ctx context.Context, metrics map[str
 func (ms *MemStorage) Ping(ctx context.Context) error {
 	return nil
 }
+
+func (pg *MemStorage) BatchUpdate(ctx context.Context, metrics []m.Metrics) error {
+	for _, v := range metrics {
+		err := pg.StoreMetric(ctx, v.ID, v.MType, *v.Value, *v.Delta)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}

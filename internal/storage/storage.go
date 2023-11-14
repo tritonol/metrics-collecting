@@ -12,5 +12,6 @@ type Storage interface {
 	SaveAllDataStructured(ctx context.Context, metrics map[string]m.Metrics) error
 	GetMetrics(ctx context.Context) (map[string]m.Metric, error)
 	GetMetric(ctx context.Context ,name string, mType string) (m.Metric, error)
+	BatchUpdate(ctx context.Context, metrics []m.Metrics) error
 	Ping(ctx context.Context) error
 }

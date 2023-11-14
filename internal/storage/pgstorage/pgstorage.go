@@ -158,3 +158,26 @@ func (pg *Postgres) SaveAllDataStructured(ctx context.Context, metrics map[strin
 
 	return nil
 }
+
+func (pg *Postgres) BatchUpdate(ctx context.Context, metrics []m.Metrics) error {
+	tx, err := pg.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, v := range metrics {
+		_, err = tx.Exec(ctx, `
+			INSERT INTO metrics(name, type, delta, value)
+			VALUES($1, $2, $3, $4)
+			ON CONFLICT (name,type)
+			DO
+				UPDATE SET delta = metrics.delta + $3, value = $4 WHERE metrics.name = $1 AND metrics.type = $2
+		`, v.ID, v.MType, v.Delta, v.Value)
+		if err != nil {
+			tx.Rollback(ctx)
+			return err
+		}
+	}
+
+	return tx.Commit(ctx)
+}
