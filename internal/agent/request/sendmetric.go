@@ -117,9 +117,10 @@ func SendBatch(metricRequest MetricRequest, serverAddress string) {
 		if lastErr == nil && resp.StatusCode == http.StatusOK {
 			break
 		}
+		defer resp.Body.Close()
+
 		time.Sleep(time.Second * time.Duration((retry+1)*2))
 	}
-	defer resp.Body.Close()
 
 	if lastErr != nil {
 		fmt.Printf("Error sending batch metrics after %d retries: %s", RetryCount, lastErr)
