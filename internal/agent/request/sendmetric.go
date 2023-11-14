@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	jsonstructs "github.com/tritonol/metrics-collecting.git/internal/structs/JSON"
+	mj "github.com/tritonol/metrics-collecting.git/internal/structs/JSON"
 )
 
 type MetricRequest interface {
@@ -17,7 +17,7 @@ type MetricRequest interface {
 func sendJSONMetrics(serverAddress, mtype, mname string, mvalue interface{}) {
 	url := fmt.Sprintf("%s/update/", serverAddress)
 
-	var body jsonstructs.Metrics
+	var body mj.Metrics
 	var delta int64
 	var value float64
 
@@ -31,8 +31,8 @@ func sendJSONMetrics(serverAddress, mtype, mname string, mvalue interface{}) {
 		return
 	}
 
-	body = jsonstructs.Metrics{
-		ID: mname,
+	body = mj.Metrics{
+		ID:    mname,
 		MType: mtype,
 		Delta: &delta,
 		Value: &value,
@@ -67,5 +67,56 @@ func Send(metricRequest MetricRequest, serverAddress string) {
 
 	for metric, value := range counterMetrics {
 		sendJSONMetrics(serverAddress, "counter", metric, value)
+	}
+}
+
+func SendBatch(metricRequest MetricRequest, serverAddress string) {
+	url := fmt.Sprintf("%s/updates/", serverAddress)
+
+	metrics := make([]mj.Metrics, 0)
+
+	gaugeMetrics := metricRequest.CollectGauge()
+	counterMetrics := metricRequest.CollectCounter()
+
+	for name, gauge := range gaugeMetrics {
+		v := gauge
+		var standart int64 = 0
+		metrics = append(metrics, mj.Metrics{
+			ID:    name,
+			MType: "gauge",
+			Value: &v,
+			Delta: &standart,
+		})
+	}
+	for name, counter := range counterMetrics {
+		v := counter
+		var standart float64 = 0
+		metrics = append(metrics, mj.Metrics{
+			ID:    name,
+			MType: "counter",
+			Delta: &v,
+			Value: &standart,
+		})
+	}
+
+	fmt.Println(metrics)
+
+	var buf bytes.Buffer
+	err := json.NewEncoder(&buf).Encode(metrics)
+	if err != nil {
+		fmt.Println("Error requesting metrics:", err)
+		return
+	}
+
+	resp, err := http.Post(url, "application/json", &buf)
+	if err != nil {
+		fmt.Println("Error requesting metrics:", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		fmt.Println("Server returned non-200 status code:", resp.Status)
+		return
 	}
 }
