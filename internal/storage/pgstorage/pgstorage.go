@@ -2,7 +2,6 @@ package pgstorage
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -28,6 +27,20 @@ func NewPg(ctx context.Context, connString string) (*Postgres, error) {
 		pgInstance = &Postgres{db}
 	})
 
+	_, err := pgInstance.db.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS metrics (
+			name varchar(128) not null,
+			type varchar(32) not null,
+			delta double precision,
+			value integer,
+			primary key(name,type)
+		);
+	`)
+
+	if err != nil {
+		return nil, err
+	}
+
 	return pgInstance, nil
 }
 
@@ -39,23 +52,23 @@ func (pg *Postgres) Close() {
 	pg.db.Close()
 }
 
-func (pg *Postgres) CreateMetricTable(ctx context.Context) error {
-	_, err := pg.db.Exec(ctx, `
-		CREATE TABLE IF NOT EXISTS metrics (
-			name varchar(128) not null,
-			type varchar(32) not null,
-			delta double precision,
-			value integer,
-			primary key(name,type)
-		);
-	`)
+// func (pg *Postgres) CreateMetricTable(ctx context.Context) error {
+// 	_, err := pg.db.Exec(ctx, `
+// 		CREATE TABLE IF NOT EXISTS metrics (
+// 			name varchar(128) not null,
+// 			type varchar(32) not null,
+// 			delta double precision,
+// 			value integer,
+// 			primary key(name,type)
+// 		);
+// 	`)
 
-	if err != nil {
-		return fmt.Errorf("cant create table: %w", err)
-	}
+// 	if err != nil {
+// 		return fmt.Errorf("cant create table: %w", err)
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 func (pg *Postgres) StoreMetric(ctx context.Context, name string, mType string, value float64, delta int64) error {
 	_, err := pg.db.Exec(ctx, `
