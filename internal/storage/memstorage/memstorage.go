@@ -105,9 +105,9 @@ func (ms *MemStorage) Ping(ctx context.Context) error {
 	return nil
 }
 
-func (pg *MemStorage) BatchUpdate(ctx context.Context, metrics []m.Metrics) error {
+func (ms *MemStorage) BatchUpdate(ctx context.Context, metrics []m.Metrics) error {
 	for _, v := range metrics {
-		err := pg.StoreMetric(ctx, v.ID, v.MType, *v.Value, *v.Delta)
+		err := ms.StoreMetric(ctx, v.ID, v.MType, *v.Value, *v.Delta)
 		if err != nil {
 			return err
 		}
