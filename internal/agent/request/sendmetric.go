@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	mj "github.com/tritonol/metrics-collecting.git/internal/structs/JSON"
 )
+
+const RetryCount = 3
 
 type MetricRequest interface {
 	CollectCounter() map[string]int64
@@ -106,11 +109,22 @@ func SendBatch(metricRequest MetricRequest, serverAddress string) {
 		return
 	}
 
-	resp, err := http.Post(url, "application/json", &buf)
-	if err != nil {
-		fmt.Println("Error requesting metrics:", err)
+	var resp *http.Response
+	var lastErr error
+
+	for retry := 0; retry < RetryCount; retry++ {
+		resp, lastErr = http.Post(url, "application/json", &buf)
+		if lastErr == nil && resp.StatusCode == http.StatusOK {
+			break
+		}
+		time.Sleep(time.Second * time.Duration((retry+1)*2))
+	}
+
+	if lastErr != nil {
+		fmt.Printf("Error sending batch metrics after %d retries: %s", RetryCount, lastErr)
 		return
 	}
+
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
