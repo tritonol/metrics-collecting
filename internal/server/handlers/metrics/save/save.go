@@ -104,6 +104,8 @@ func NewJSON(metricSaver MetricSaver) http.HandlerFunc {
 			err := metricSaver.StoreMetric(r.Context(), metric.ID, metric.MType, *metric.Value, 0)
 			if err != nil {
 				http.Error(w, "Cant write", http.StatusInternalServerError)
+				fmt.Printf("%s", err)
+				return
 			}
 		case counter:
 			if metric.Delta == nil {
@@ -113,6 +115,8 @@ func NewJSON(metricSaver MetricSaver) http.HandlerFunc {
 			err := metricSaver.StoreMetric(r.Context(), metric.ID, metric.MType, 0, *metric.Delta)
 			if err != nil {
 				http.Error(w, "Cant write", http.StatusInternalServerError)
+				fmt.Printf("%s", err)
+				return
 			}
 		default:
 			http.Error(w, "Invalid metric type", http.StatusBadRequest)

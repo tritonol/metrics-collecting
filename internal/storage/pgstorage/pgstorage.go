@@ -63,7 +63,7 @@ func (pg *Postgres) StoreMetric(ctx context.Context, name string, mType string, 
 		VALUES($1, $2, $3, $4)
 		ON CONFLICT (name,type)
 		DO
-			UPDATE SET delta = $3, value = $4 WHERE name = $1 AND type = $2
+			UPDATE SET delta = metrics.delta + $3, value = $4 WHERE metrics.name = $1 AND metrics.type = $2
 	`, name, mType, delta, value)
 
 	if err != nil {
