@@ -32,7 +32,7 @@ func NewPg(ctx context.Context, connString string) (*Postgres, error) {
 		CREATE TABLE IF NOT EXISTS metrics (
 			name varchar(128) not null,
 			type varchar(32) not null,
-			delta integer default 0,
+			delta bigint default 0,
 			value double precision default 0,
 			primary key(name,type)
 		);
