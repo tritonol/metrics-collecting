@@ -47,9 +47,9 @@ func main() {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
-	backupManager := backup.NewBackupManager(storage, cfg.Backup.FilePath, time.Duration(cfg.Backup.StoreInterval)*time.Second, logger)
+	backupManager := backup.NewBackupManager(db, cfg.Backup.FilePath, time.Duration(cfg.Backup.StoreInterval)*time.Second, logger)
 	if cfg.Backup.Restore {
-		if err := backupManager.Restore(); err != nil {
+		if err := backupManager.Restore(ctx); err != nil {
 			logger.Error("Error restoring metrics:", zap.Error(err))
 		} else {
 			logger.Info("Data was restored")

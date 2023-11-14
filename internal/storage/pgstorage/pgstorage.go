@@ -57,7 +57,7 @@ func (pg *Postgres) CreateMetricTable(ctx context.Context) error {
 	return nil
 }
 
-func (pg *Postgres) StoreMetric(ctx context.Context, name string, mType string, value float64, delta int64) error{
+func (pg *Postgres) StoreMetric(ctx context.Context, name string, mType string, value float64, delta int64) error {
 	_, err := pg.db.Exec(ctx, `
 		INSERT INTO metrics(name, type, delta, value)
 		VALUES($1, $2, $3, $4)
@@ -89,7 +89,7 @@ func (pg *Postgres) GetMetric(ctx context.Context, name string, mType string) (m
 }
 
 func (pg *Postgres) GetMetrics(ctx context.Context) (map[string]m.Metric, error) {
-	metrics := make(map[string]m.Metric, 20)
+	metrics := make(map[string]m.Metric, 29)
 	rows, err := pg.db.Query(ctx, `SELECT name, delta, value, type FROM metrics`)
 
 	if err != nil {
@@ -112,4 +112,36 @@ func (pg *Postgres) GetMetrics(ctx context.Context) (map[string]m.Metric, error)
 	}
 
 	return metrics, err
+}
+
+func (pg *Postgres) GetAllDataStructed(ctx context.Context) (map[string]m.Metrics, error) {
+	rawMetrics, err := pg.GetMetrics(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	preparedMetrics := make(map[string]m.Metrics)
+
+	for name, metric := range rawMetrics {
+		newMetric := metric
+		preparedMetrics[name] = m.Metrics{
+			ID:    name,
+			MType: string(metric.Type),
+			Value: &newMetric.Value,
+			Delta: &newMetric.Delta,
+		}
+	}
+
+	return preparedMetrics, nil
+}
+
+func (pg *Postgres) SaveAllDataStructured(ctx context.Context, metrics map[string]m.Metrics) error {
+	for name, metric := range metrics {
+		err := pg.StoreMetric(ctx, name, metric.MType, *metric.Value, *metric.Delta)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
