@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -8,7 +9,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tritonol/metrics-collecting.git/internal/server/config"
 	"github.com/tritonol/metrics-collecting.git/internal/storage/memstorage"
+	"github.com/tritonol/metrics-collecting.git/internal/storage/pgstorage"
 	"go.uber.org/zap"
 )
 
@@ -28,9 +31,16 @@ func testRequest(t *testing.T, ts *httptest.Server, method,
 }
 
 func TestRouter(t *testing.T) {
+	cfg := config.MustLoad()
 	storage := memstorage.NewMemStorage()
 	logger, _ := zap.NewProduction()
-	ts := httptest.NewServer(MetricRouter(storage, logger))
+	ctx := context.Background()
+	db, err := pgstorage.NewPg(ctx, cfg.DB.ConnString)
+	if err != nil {
+		return
+	}
+	
+	ts := httptest.NewServer(MetricRouter(ctx, db, storage, logger))
 
 	type want struct {
 		code        int
