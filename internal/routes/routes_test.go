@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tritonol/metrics-collecting.git/internal/server/config"
+	"github.com/tritonol/metrics-collecting.git/internal/storage"
 	"github.com/tritonol/metrics-collecting.git/internal/storage/memstorage"
 	"github.com/tritonol/metrics-collecting.git/internal/storage/pgstorage"
 	"go.uber.org/zap"
@@ -32,15 +33,23 @@ func testRequest(t *testing.T, ts *httptest.Server, method,
 
 func TestRouter(t *testing.T) {
 	cfg := config.MustLoad()
-	storage := memstorage.NewMemStorage()
+
 	logger, _ := zap.NewProduction()
 	ctx := context.Background()
-	db, err := pgstorage.NewPg(ctx, cfg.DB.ConnString)
-	if err != nil {
-		return
+	
+	var storage storage.Storage
+	var err error
+
+	if cfg.DB.ConnString != "" {
+		storage, err = pgstorage.NewPg(ctx, cfg.DB.ConnString)
+		if err != nil {
+			logger.Error("Can`t connect db", zap.Error(err))
+		}
+	} else {
+		storage = memstorage.NewMemStorage()
 	}
 	
-	ts := httptest.NewServer(MetricRouter(ctx, db, storage, logger))
+	ts := httptest.NewServer(MetricRouter(ctx, storage, logger))
 
 	type want struct {
 		code        int

@@ -12,6 +12,7 @@ import (
 	"github.com/tritonol/metrics-collecting.git/internal/backup"
 	"github.com/tritonol/metrics-collecting.git/internal/routes"
 	"github.com/tritonol/metrics-collecting.git/internal/server/config"
+	"github.com/tritonol/metrics-collecting.git/internal/storage"
 	"github.com/tritonol/metrics-collecting.git/internal/storage/memstorage"
 	"github.com/tritonol/metrics-collecting.git/internal/storage/pgstorage"
 	"go.uber.org/zap"
@@ -23,17 +24,22 @@ func main() {
 	logger, _ := zap.NewProduction()
 	defer logger.Sync()
 
-	storage := memstorage.NewMemStorage()
-
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 
-	db, err := pgstorage.NewPg(ctx, cfg.DB.ConnString)
-	if err != nil {
-		logger.Error("Can`t connect db", zap.Error(err))
+	var storage storage.Storage
+	var err error
+
+	if cfg.DB.ConnString != "" {
+		storage, err = pgstorage.NewPg(ctx, cfg.DB.ConnString)
+		if err != nil {
+			logger.Error("Can`t connect db", zap.Error(err))
+		}
+	} else {
+		storage = memstorage.NewMemStorage()
 	}
 
-	server := &http.Server{Addr: cfg.Server.Address, Handler: routes.MetricRouter(ctx, db, storage, logger)}
+	server := &http.Server{Addr: cfg.Server.Address, Handler: routes.MetricRouter(ctx, storage, logger)}
 
 	logger.Info("Server strat")
 
@@ -44,7 +50,7 @@ func main() {
 
 	backupManager := backup.NewBackupManager(storage, cfg.Backup.FilePath, time.Duration(cfg.Backup.StoreInterval)*time.Second, logger)
 	if cfg.Backup.Restore {
-		if err := backupManager.Restore(); err != nil {
+		if err := backupManager.Restore(ctx); err != nil {
 			logger.Error("Error restoring metrics:", zap.Error(err))
 		} else {
 			logger.Info("Data was restored")

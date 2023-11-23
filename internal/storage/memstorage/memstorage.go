@@ -1,6 +1,7 @@
 package memstorage
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -23,7 +24,7 @@ func NewMemStorage() *MemStorage {
 	}
 }
 
-func (ms *MemStorage) StoreMetric(name string, mType string, value float64, delta int64) {
+func (ms *MemStorage) StoreMetric(ctx context.Context, name string, mType string, value float64, delta int64) error {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
 
@@ -37,16 +38,18 @@ func (ms *MemStorage) StoreMetric(name string, mType string, value float64, delt
 			Delta: delta,
 		}
 	}
+
+	return nil
 }
 
-func (ms *MemStorage) GetMetrics() map[string]m.Metric {
+func (ms *MemStorage) GetMetrics(ctx context.Context) (map[string]m.Metric, error) {
 	ms.mu.RLock()
 	defer ms.mu.RUnlock()
 
-	return ms.metrics
+	return ms.metrics, nil
 }
 
-func (ms *MemStorage) GetMetric(name string, mType string) (m.Metric, error) {
+func (ms *MemStorage) GetMetric(ctx context.Context, name string, mType string) (m.Metric, error) {
 	ms.mu.RLock()
 	defer ms.mu.RUnlock()
 
@@ -58,7 +61,7 @@ func (ms *MemStorage) GetMetric(name string, mType string) (m.Metric, error) {
 	return metric, nil
 }
 
-func (ms *MemStorage) GetAllDataStructed() map[string]m.Metrics {
+func (ms *MemStorage) GetAllDataStructed(ctx context.Context) (map[string]m.Metrics, error) {
 	ms.mu.RLock()
 	defer ms.mu.RUnlock()
 
@@ -74,10 +77,10 @@ func (ms *MemStorage) GetAllDataStructed() map[string]m.Metrics {
 		}
 	}
 
-	return data
+	return data, nil
 }
 
-func (ms *MemStorage) SaveAllDataStructured(metrics map[string]m.Metrics) error {
+func (ms *MemStorage) SaveAllDataStructured(ctx context.Context, metrics map[string]m.Metrics) error {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
 
@@ -95,5 +98,9 @@ func (ms *MemStorage) SaveAllDataStructured(metrics map[string]m.Metrics) error 
 			}
 		}
 	}
+	return nil
+}
+
+func (ms *MemStorage) Ping(ctx context.Context) error {
 	return nil
 }

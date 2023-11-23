@@ -1,6 +1,7 @@
 package get
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -17,8 +18,8 @@ const (
 )
 
 type metricGetter interface {
-	GetMetrics() map[string]m.Metric
-	GetMetric(name string, mType string) (m.Metric, error)
+	GetMetrics(ctx context.Context) (map[string]m.Metric, error)
+	GetMetric(ctx context.Context ,name string, mType string) (m.Metric, error)
 }
 
 func Get(storage metricGetter) http.HandlerFunc {
@@ -32,10 +33,10 @@ func Get(storage metricGetter) http.HandlerFunc {
 
 		switch metricType {
 		case counter:
-			metric, err = storage.GetMetric(metricName, counter)
+			metric, err = storage.GetMetric(r.Context(), metricName, counter)
 			response = fmt.Sprintf("%v", metric.Delta)
 		case gauge:
-			metric, err = storage.GetMetric(metricName, gauge)
+			metric, err = storage.GetMetric(r.Context(), metricName, gauge)
 			response = fmt.Sprintf("%v", metric.Value)
 		default:
 			http.Error(w, "Invalid metric type", http.StatusBadRequest)
@@ -65,10 +66,10 @@ func GetJSON(storage metricGetter) http.HandlerFunc {
 
 		switch metric.MType {
 		case gauge:
-			rawMetric, err = storage.GetMetric(metric.ID, "gauge")
+			rawMetric, err = storage.GetMetric(r.Context(), metric.ID, "gauge")
 			metric.Value = &rawMetric.Value
 		case counter:
-			rawMetric, err = storage.GetMetric(metric.ID, "counter")
+			rawMetric, err = storage.GetMetric(r.Context(), metric.ID, "counter")
 			metric.Delta = &rawMetric.Delta
 		}
 
@@ -85,7 +86,10 @@ func GetJSON(storage metricGetter) http.HandlerFunc {
 func MainPage(storage metricGetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		resp := make([]string, 0, 50)
-		data := storage.GetMetrics()
+		data, err := storage.GetMetrics(r.Context())
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 
 		for k, v := range data {
 			switch v.Type {

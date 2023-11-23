@@ -9,12 +9,11 @@ import (
 	"github.com/tritonol/metrics-collecting.git/internal/server/handlers/metrics/get"
 	"github.com/tritonol/metrics-collecting.git/internal/server/handlers/metrics/save"
 	statuscheck "github.com/tritonol/metrics-collecting.git/internal/server/handlers/statusCheck"
-	"github.com/tritonol/metrics-collecting.git/internal/storage/memstorage"
-	"github.com/tritonol/metrics-collecting.git/internal/storage/pgstorage"
+	"github.com/tritonol/metrics-collecting.git/internal/storage"
 	"go.uber.org/zap"
 )
 
-func MetricRouter(ctx context.Context, db *pgstorage.Postgres, storage *memstorage.MemStorage, logger *zap.Logger) chi.Router {
+func MetricRouter(ctx context.Context, storage storage.Storage, logger *zap.Logger) chi.Router {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestLogger(logger))
 	r.Use(compressor.GzipMiddleware)
@@ -27,7 +26,7 @@ func MetricRouter(ctx context.Context, db *pgstorage.Postgres, storage *memstora
 
 	r.Get("/", get.MainPage(storage))
 
-	r.Get("/ping", statuscheck.Ping(ctx, db))
+	r.Get("/ping", statuscheck.Ping(ctx, storage))
 
 	return r
 }

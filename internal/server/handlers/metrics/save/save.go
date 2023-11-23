@@ -1,6 +1,7 @@
 package save
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,7 +20,7 @@ const (
 )
 
 type MetricSaver interface {
-	StoreMetric(name string, mType string, value float64, delta int64)
+	StoreMetric(ctx context.Context, name string, mType string, value float64, delta int64) error
 }
 
 func New(metricSaver MetricSaver) http.HandlerFunc {
@@ -41,14 +42,14 @@ func New(metricSaver MetricSaver) http.HandlerFunc {
 				http.Error(w, "Invalid metric value", http.StatusBadRequest)
 				return
 			}
-			metricSaver.StoreMetric(metricName, metricType, metricValue, 0)
+			metricSaver.StoreMetric(r.Context(), metricName, metricType, metricValue, 0)
 		case counter:
 			metricValue, err := strconv.ParseInt(metricValue, 10, 64)
 			if err != nil {
 				http.Error(w, "Invalid metric value", http.StatusBadRequest)
 				return
 			}
-			metricSaver.StoreMetric(metricName, metricType, 0, metricValue)
+			metricSaver.StoreMetric(r.Context(), metricName, metricType, 0, metricValue)
 		default:
 			http.Error(w, "Invalid metric type", http.StatusBadRequest)
 			return
@@ -100,13 +101,23 @@ func NewJSON(metricSaver MetricSaver) http.HandlerFunc {
 				http.Error(w, "Empty value", http.StatusBadRequest)
 				return
 			}
-			metricSaver.StoreMetric(metric.ID, metric.MType, *metric.Value, 0)
+			err := metricSaver.StoreMetric(r.Context(), metric.ID, metric.MType, *metric.Value, 0)
+			if err != nil {
+				http.Error(w, "Cant write", http.StatusInternalServerError)
+				fmt.Printf("%s", err)
+				return
+			}
 		case counter:
 			if metric.Delta == nil {
 				http.Error(w, "Empty value", http.StatusBadRequest)
 				return
 			}
-			metricSaver.StoreMetric(metric.ID, metric.MType, 0, *metric.Delta)
+			err := metricSaver.StoreMetric(r.Context(), metric.ID, metric.MType, 0, *metric.Delta)
+			if err != nil {
+				http.Error(w, "Cant write", http.StatusInternalServerError)
+				fmt.Printf("%s", err)
+				return
+			}
 		default:
 			http.Error(w, "Invalid metric type", http.StatusBadRequest)
 			return
