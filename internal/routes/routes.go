@@ -20,6 +20,7 @@ func MetricRouter(ctx context.Context, storage storage.Storage, logger *zap.Logg
 
 	r.Post("/update/{type}/{name}/{value}", save.New(storage))
 	r.Post("/update/", save.NewJSON(storage))
+	r.Post("/updates/", save.Update(storage))
 
 	r.Get("/value/{type}/{name}", get.Get(storage))
 	r.Post("/value/", get.GetJSON(storage))

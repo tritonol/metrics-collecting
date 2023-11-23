@@ -2,6 +2,7 @@ package pgstorage
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -31,8 +32,8 @@ func NewPg(ctx context.Context, connString string) (*Postgres, error) {
 		CREATE TABLE IF NOT EXISTS metrics (
 			name varchar(128) not null,
 			type varchar(32) not null,
-			delta double precision,
-			value integer,
+			delta bigint default 0,
+			value double precision default 0,
 			primary key(name,type)
 		);
 	`)
@@ -157,4 +158,42 @@ func (pg *Postgres) SaveAllDataStructured(ctx context.Context, metrics map[strin
 	}
 
 	return nil
+}
+
+func (pg *Postgres) BatchUpdate(ctx context.Context, metrics []m.Metrics) error {
+	tx, err := pg.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, v := range metrics {
+		var delta int64
+		var value float64
+
+		if v.Delta == nil {
+			delta = 0
+		} else {
+			delta = *v.Delta
+		}
+		if v.Value == nil {
+			value = 0
+		} else {
+			value = *v.Value
+		}
+
+		_, err = tx.Exec(ctx, `
+			INSERT INTO metrics(name, type, delta, value)
+			VALUES($1, $2, $3, $4)
+			ON CONFLICT (name,type)
+			DO
+				UPDATE SET delta = metrics.delta + $3, value = $4 WHERE metrics.name = $1 AND metrics.type = $2
+		`, v.ID, v.MType, delta, value)
+		if err != nil {
+			tx.Rollback(ctx)
+			fmt.Println(err)
+			return err
+		}
+	}
+
+	return tx.Commit(ctx)
 }

@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	jsonstructs "github.com/tritonol/metrics-collecting.git/internal/structs/JSON"
+	m "github.com/tritonol/metrics-collecting.git/internal/structs/JSON"
 )
 
 const (
@@ -21,6 +21,7 @@ const (
 
 type MetricSaver interface {
 	StoreMetric(ctx context.Context, name string, mType string, value float64, delta int64) error
+	BatchUpdate(ctx context.Context, metrics []m.Metrics) error
 }
 
 func New(metricSaver MetricSaver) http.HandlerFunc {
@@ -61,7 +62,7 @@ func New(metricSaver MetricSaver) http.HandlerFunc {
 
 func NewJSON(metricSaver MetricSaver) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var metric jsonstructs.Metrics
+		var metric m.Metrics
 
 		if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
 			var syntaxError *json.SyntaxError
@@ -121,10 +122,26 @@ func NewJSON(metricSaver MetricSaver) http.HandlerFunc {
 		default:
 			http.Error(w, "Invalid metric type", http.StatusBadRequest)
 			return
-		} 
+		}
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(metric)
+	}
+}
+
+func Update(storage MetricSaver) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var metrics []m.Metrics
+
+		err := json.NewDecoder(r.Body).Decode(&metrics)
+		if err != nil {
+			http.Error(w, "something wrong", http.StatusBadRequest)
+		}
+
+		err = storage.BatchUpdate(r.Context(), metrics)
+		if err != nil {
+			http.Error(w, "something wrong", http.StatusInternalServerError)
+		}
 	}
 }
