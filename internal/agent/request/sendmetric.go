@@ -3,6 +3,9 @@ package request
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -60,16 +63,23 @@ func sendJSONMetrics(serverAddress, mtype, mname string, mvalue interface{}) err
 	return nil
 }
 
-func retryableHTTPPost(ctx context.Context, url string, data *bytes.Buffer) (*http.Response, error) {
+func retryableHTTPPost(ctx context.Context, url string, data *bytes.Buffer, key string) (*http.Response, error) {
 	var resp *http.Response
 	var lastErr error
 
 	for retry := 0; retry < RetryCount; retry++ {
 		select {
 		case <-ctx.Done():
-			return nil, ctx.Err() // Context canceled or deadline exceeded
+			return nil, ctx.Err()
 		default:
-			resp, lastErr = http.Post(url, "application/json", data)
+			req, lastErr := http.NewRequest(http.MethodPost, url, data)
+
+			if key != "" {
+				signature := signSHA256(data.Bytes(), key)
+				req.Header.Set("HashSHA256", signature)
+			}
+
+			resp, lastErr = http.DefaultClient.Do(req)
 			if lastErr == nil && resp.StatusCode == http.StatusOK {
 				return resp, nil
 			}
@@ -97,7 +107,7 @@ func Send(metricRequest MetricRequest, serverAddress string) {
 	}
 }
 
-func SendBatch(metricRequest MetricRequest, serverAddress string) {
+func SendBatch(metricRequest MetricRequest, serverAddress string, key string) {
 	url := fmt.Sprintf("%s/updates/", serverAddress)
 
 	metrics := make([]mj.Metrics, 0)
@@ -136,7 +146,7 @@ func SendBatch(metricRequest MetricRequest, serverAddress string) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	resp, err := retryableHTTPPost(ctx, url, &buf)
+	resp, err := retryableHTTPPost(ctx, url, &buf, key)
 	if err != nil {
 		log.Printf("Error sending batch metrics after %d retries: %v", RetryCount, err)
 		return
@@ -147,4 +157,10 @@ func SendBatch(metricRequest MetricRequest, serverAddress string) {
 		log.Printf("Server returned non-200 status code: %s", resp.Status)
 		return
 	}
+}
+
+func signSHA256 (data []byte, key string) string {
+	h := hmac.New(sha256.New, []byte(key))
+	h.Write(data)
+	return base64.StdEncoding.EncodeToString(h.Sum(nil))
 }
