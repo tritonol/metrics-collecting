@@ -3,15 +3,13 @@ package request
 import (
 	"bytes"
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"time"
 
+	"github.com/tritonol/metrics-collecting.git/internal/services/hashing"
 	mj "github.com/tritonol/metrics-collecting.git/internal/structs/JSON"
 )
 
@@ -78,7 +76,7 @@ func retryableHTTPPost(ctx context.Context, url string, data *bytes.Buffer, key 
 			}
 
 			if key != "" {
-				signature := signSHA256(data.Bytes(), key)
+				signature := hashing.SignSHA256(data.Bytes(), key)
 				req.Header.Set("HashSHA256", signature)
 			}
 
@@ -159,10 +157,4 @@ func SendBatch(metricRequest MetricRequest, serverAddress string, key string) {
 		log.Printf("Server returned non-200 status code: %s", resp.Status)
 		return
 	}
-}
-
-func signSHA256 (data []byte, key string) string {
-	h := hmac.New(sha256.New, []byte(key))
-	h.Write(data)
-	return base64.StdEncoding.EncodeToString(h.Sum(nil))
 }
