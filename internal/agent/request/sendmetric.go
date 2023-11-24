@@ -72,7 +72,10 @@ func retryableHTTPPost(ctx context.Context, url string, data *bytes.Buffer, key 
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		default:
-			req, lastErr := http.NewRequest(http.MethodPost, url, data)
+			req, err := http.NewRequest(http.MethodPost, url, data)
+			if err != nil {
+				time.Sleep(time.Second * time.Duration((retry+1)*2))
+			}
 
 			if key != "" {
 				signature := signSHA256(data.Bytes(), key)
@@ -86,7 +89,6 @@ func retryableHTTPPost(ctx context.Context, url string, data *bytes.Buffer, key 
 			time.Sleep(time.Second * time.Duration((retry+1)*2))
 		}
 	}
-
 	return resp, lastErr
 }
 
@@ -151,7 +153,6 @@ func SendBatch(metricRequest MetricRequest, serverAddress string, key string) {
 		log.Printf("Error sending batch metrics after %d retries: %v", RetryCount, err)
 		return
 	}
-	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		log.Printf("Server returned non-200 status code: %s", resp.Status)
