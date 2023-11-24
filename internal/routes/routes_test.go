@@ -49,7 +49,7 @@ func TestRouter(t *testing.T) {
 		storage = memstorage.NewMemStorage()
 	}
 	
-	ts := httptest.NewServer(MetricRouter(ctx, storage, logger))
+	ts := httptest.NewServer(MetricRouter(ctx, storage, logger, cfg.Key))
 
 	type want struct {
 		code        int
