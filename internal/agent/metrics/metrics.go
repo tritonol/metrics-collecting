@@ -1,8 +1,13 @@
 package metrics
 
 import (
+	"fmt"
 	"math/rand"
 	"runtime"
+	"time"
+
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/mem"
 )
 
 type Metrics struct {
@@ -50,6 +55,28 @@ func (m *Metrics) CollectGauge() {
 	m.gauge["TotalAlloc"] = float64(mem.TotalAlloc)
 
 	m.gauge["RandomValue"] = float64(rand.Intn(100))
+}
+
+func (m *Metrics) CollectAdditionalGauge() error {
+	v, err := mem.VirtualMemory()
+	if err != nil {
+		fmt.Errorf("read cpu gopsutil err: %w", err)
+	}
+
+	utils, err := cpu.Percent(1*time.Second, true)
+	if err != nil {
+		fmt.Errorf("read cpu gopsutil err: %w", err)
+	}
+
+	m.gauge["TotalMemory"] = float64(v.Total)
+	m.gauge["FreeMemory"] = float64(v.Free)
+
+	for k, value := range utils {
+		index := fmt.Sprintf("CPUutilization%d", k)
+		m.gauge[index] = value
+	}
+
+	return nil
 }
 
 func (m *Metrics) GetGauge() map[string]float64 {

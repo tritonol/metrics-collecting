@@ -24,6 +24,7 @@ func main() {
 		case <-updateTicker.C:
 			metrics.CollectCounter()
 			metrics.CollectGauge()
+			metrics.CollectAdditionalGauge()
 		case <-sendTicker.C:
 			request.SendBatch(metrics, cfg.Address, cfg.Key)
 		}
