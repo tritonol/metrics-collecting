@@ -11,6 +11,7 @@ type Config struct {
 	ReportInterval int64
 	PollInterval   int64
 	Key            string
+	RateLimit      int64
 }
 
 func MustLoad() *Config {
@@ -18,7 +19,7 @@ func MustLoad() *Config {
 		Address:        "localhost:8080",
 		ReportInterval: 2,
 		PollInterval:   10,
-		Key: "",
+		Key:            "",
 	}
 
 	addr := flag.String("a", "localhost:8080", "endpoint address")
@@ -26,10 +27,12 @@ func MustLoad() *Config {
 	flag.StringVar(&cfg.Key, "k", "", "Secret key")
 	flag.Int64Var(&cfg.PollInterval, "p", 2, "set poll interval")
 	flag.Int64Var(&cfg.ReportInterval, "r", 10, "set report interval")
+	flag.Int64Var(&cfg.RateLimit, "l", 10, "Rate limit for outgoing requests")
 	flag.Parse()
 
 	cfg.PollInterval = getEnvAsInt64("POLL_INTERVAL", cfg.PollInterval)
 	cfg.ReportInterval = getEnvAsInt64("REPORT_INTERVAL", cfg.ReportInterval)
+	cfg.RateLimit = getEnvAsInt64("RATE_LIMIT", cfg.RateLimit)
 	cfg.Key = getEnv("KEY", cfg.Key)
 
 	cfg.Address = "http://" + getEnv("ADDRESS", *addr)

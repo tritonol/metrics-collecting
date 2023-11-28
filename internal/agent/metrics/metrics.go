@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/shirou/gopsutil/v3/cpu"
@@ -11,6 +12,7 @@ import (
 )
 
 type Metrics struct {
+	mu		sync.RWMutex
 	gauge   map[string]float64
 	counter map[string]int64
 }
@@ -23,6 +25,7 @@ func NewMetrics() *Metrics {
 }
 
 func (m *Metrics) CollectGauge() {
+	m.mu.Lock()
 	var mem = new(runtime.MemStats)
 	runtime.ReadMemStats(mem)
 
@@ -55,17 +58,19 @@ func (m *Metrics) CollectGauge() {
 	m.gauge["TotalAlloc"] = float64(mem.TotalAlloc)
 
 	m.gauge["RandomValue"] = float64(rand.Intn(100))
+	m.mu.Unlock()
 }
 
 func (m *Metrics) CollectAdditionalGauge() error {
+	m.mu.Lock()
 	v, err := mem.VirtualMemory()
 	if err != nil {
-		fmt.Errorf("read cpu gopsutil err: %w", err)
+		return fmt.Errorf("read cpu gopsutil err: %w", err)
 	}
 
 	utils, err := cpu.Percent(1*time.Second, true)
 	if err != nil {
-		fmt.Errorf("read cpu gopsutil err: %w", err)
+		return fmt.Errorf("read cpu gopsutil err: %w", err)
 	}
 
 	m.gauge["TotalMemory"] = float64(v.Total)
@@ -76,17 +81,24 @@ func (m *Metrics) CollectAdditionalGauge() error {
 		m.gauge[index] = value
 	}
 
+	m.mu.Unlock()
 	return nil
 }
 
 func (m *Metrics) GetGauge() map[string]float64 {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	return m.gauge
 }
 
 func (m *Metrics) CollectCounter() {
+	m.mu.Lock()
 	m.counter["PollCount"] += 1
+	m.mu.Unlock()
 }
 
 func (m *Metrics) GetCounter() map[string]int64 {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	return m.counter
 }
