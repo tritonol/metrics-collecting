@@ -23,24 +23,18 @@ func main() {
 	workerPool := workerpool.NewWorkerPool(cfg.RateLimit)
 
 	go func() {
-		for {
-			select {
-			case <-updateTicker.C:
-				metrics.CollectCounter()
-				metrics.CollectGauge()
-				metrics.CollectAdditionalGauge()
-			}
+		for range updateTicker.C {
+			metrics.CollectCounter()
+			metrics.CollectGauge()
+			metrics.CollectAdditionalGauge()
 		}
 	}()
 
 	go func() {
-		for {
-			select {
-			case <-sendTicker.C:
-				workerPool.Submit(func() {
-					request.SendBatch(metrics, cfg.Address, cfg.Key)
-				})
-			}
+		for range sendTicker.C {
+			workerPool.Submit(func() {
+				request.SendBatch(metrics, cfg.Address, cfg.Key)
+			})
 		}
 	}()
 
