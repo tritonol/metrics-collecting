@@ -20,6 +20,11 @@ type MetricRequest interface {
 	CollectGauge() map[string]float64
 }
 
+type NewMetricRequest interface {
+	GetCounter() map[string]int64
+	GetGauge() map[string]float64
+}
+
 func sendJSONMetrics(serverAddress, mtype, mname string, mvalue interface{}) error {
 	url := fmt.Sprintf("%s/update/", serverAddress)
 
@@ -107,13 +112,13 @@ func Send(metricRequest MetricRequest, serverAddress string) {
 	}
 }
 
-func SendBatch(metricRequest MetricRequest, serverAddress string, key string) {
+func SendBatch(metricRequest NewMetricRequest, serverAddress string, key string) {
 	url := fmt.Sprintf("%s/updates/", serverAddress)
 
 	metrics := make([]mj.Metrics, 0)
 
-	gaugeMetrics := metricRequest.CollectGauge()
-	counterMetrics := metricRequest.CollectCounter()
+	gaugeMetrics := metricRequest.GetGauge()
+	counterMetrics := metricRequest.GetCounter()
 
 	for name, gauge := range gaugeMetrics {
 		v := gauge

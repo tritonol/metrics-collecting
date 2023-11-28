@@ -4,14 +4,14 @@ import (
 	"time"
 
 	"github.com/tritonol/metrics-collecting.git/internal/agent/config"
-	"github.com/tritonol/metrics-collecting.git/internal/agent/metrics"
+	metr "github.com/tritonol/metrics-collecting.git/internal/agent/metrics"
 	"github.com/tritonol/metrics-collecting.git/internal/agent/request"
 )
 
 func main() {
 	cfg := config.MustLoad()
 
-	metrics := metrics.NewMetrics()
+	metrics := metr.NewMetrics()
 
 	updateTicker := time.NewTicker(time.Duration(cfg.PollInterval) * time.Second)
 	defer updateTicker.Stop()
@@ -28,5 +28,4 @@ func main() {
 			request.SendBatch(metrics, cfg.Address, cfg.Key)
 		}
 	}
-
 }

@@ -17,7 +17,7 @@ func NewMetrics() *Metrics {
 	}
 }
 
-func (m *Metrics) CollectGauge() map[string]float64 {
+func (m *Metrics) CollectGauge() {
 	var mem = new(runtime.MemStats)
 	runtime.ReadMemStats(mem)
 
@@ -50,11 +50,16 @@ func (m *Metrics) CollectGauge() map[string]float64 {
 	m.gauge["TotalAlloc"] = float64(mem.TotalAlloc)
 
 	m.gauge["RandomValue"] = float64(rand.Intn(100))
+}
 
+func (m *Metrics) GetGauge() map[string]float64 {
 	return m.gauge
 }
 
-func (m *Metrics) CollectCounter() map[string]int64 {
+func (m *Metrics) CollectCounter() {
 	m.counter["PollCount"] += 1
+}
+
+func (m *Metrics) GetCounter() map[string]int64 {
 	return m.counter
 }

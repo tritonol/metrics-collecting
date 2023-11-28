@@ -7,12 +7,15 @@ import (
 )
 
 func TestCollectGauge(t *testing.T){
-	assert.NotEmpty(t, NewMetrics().CollectGauge())
+	metric := NewMetrics()
+	metric.CollectGauge()
+	assert.NotEmpty(t, metric.GetGauge())
 }
 
 func TestCollectCounter(t *testing.T){
-	metrics := NewMetrics().CollectCounter()
-
+	metric := NewMetrics()
+	metric.CollectCounter()
+	metrics := metric.GetGauge()
 	assert.NotEmpty(t, metrics)
 
 	assert.Equal(t, int64(1), metrics["PollCount"])
