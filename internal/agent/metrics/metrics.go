@@ -63,6 +63,8 @@ func (m *Metrics) CollectGauge() {
 
 func (m *Metrics) CollectAdditionalGauge() error {
 	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	v, err := mem.VirtualMemory()
 	if err != nil {
 		return fmt.Errorf("read cpu gopsutil err: %w", err)
@@ -81,7 +83,6 @@ func (m *Metrics) CollectAdditionalGauge() error {
 		m.gauge[index] = value
 	}
 
-	m.mu.Unlock()
 	return nil
 }
 
@@ -93,8 +94,8 @@ func (m *Metrics) GetGauge() map[string]float64 {
 
 func (m *Metrics) CollectCounter() {
 	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.counter["PollCount"] += 1
-	m.mu.Unlock()
 }
 
 func (m *Metrics) GetCounter() map[string]int64 {
