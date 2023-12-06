@@ -8,17 +8,18 @@ import (
 type Config struct {
 	Server HTTPServer
 	Backup Backup
-	DB	DB
+	DB     DB
+	Key    string
 }
 
 type HTTPServer struct {
 	Address string
 }
 
-type Backup struct{
+type Backup struct {
 	StoreInterval int64
-	FilePath string
-	Restore bool
+	FilePath      string
+	Restore       bool
 }
 
 type DB struct {
@@ -32,6 +33,7 @@ func MustLoad() *Config {
 	flag.BoolVar(&cfg.Backup.Restore, "r", true, "Load previously saved values from file")
 	flag.Int64Var(&cfg.Backup.StoreInterval, "i", 300, "Backup interval")
 	flag.StringVar(&cfg.DB.ConnString, "d", "", "Pg connection string")
+	flag.StringVar(&cfg.Key, "k", "", "Secret key")
 	flag.Parse()
 
 	if envAddr := os.Getenv("ADDRESS"); envAddr != "" {
@@ -39,6 +41,10 @@ func MustLoad() *Config {
 	}
 	if envDBDSN := os.Getenv("DATABASE_DSN"); envDBDSN != "" {
 		cfg.DB.ConnString = envDBDSN
+	}
+
+	if envKey := os.Getenv("KEY"); envKey != "" {
+		cfg.Key = envKey
 	}
 
 	return &cfg

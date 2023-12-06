@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/tritonol/metrics-collecting.git/internal/services/hashing"
 	mj "github.com/tritonol/metrics-collecting.git/internal/structs/JSON"
 )
 
@@ -17,6 +18,11 @@ const RetryCount = 3
 type MetricRequest interface {
 	CollectCounter() map[string]int64
 	CollectGauge() map[string]float64
+}
+
+type NewMetricRequest interface {
+	GetCounter() map[string]int64
+	GetGauge() map[string]float64
 }
 
 func sendJSONMetrics(serverAddress, mtype, mname string, mvalue interface{}) error {
@@ -60,23 +66,32 @@ func sendJSONMetrics(serverAddress, mtype, mname string, mvalue interface{}) err
 	return nil
 }
 
-func retryableHTTPPost(ctx context.Context, url string, data *bytes.Buffer) (*http.Response, error) {
+func retryableHTTPPost(ctx context.Context, url string, data *bytes.Buffer, key string) (*http.Response, error) {
 	var resp *http.Response
 	var lastErr error
 
 	for retry := 0; retry < RetryCount; retry++ {
 		select {
 		case <-ctx.Done():
-			return nil, ctx.Err() // Context canceled or deadline exceeded
+			return nil, ctx.Err()
 		default:
-			resp, lastErr = http.Post(url, "application/json", data)
+			req, err := http.NewRequest(http.MethodPost, url, data)
+			if err != nil {
+				time.Sleep(time.Second * time.Duration((retry+1)*2))
+			}
+
+			if key != "" {
+				signature := hashing.SignSHA256(data.Bytes(), key)
+				req.Header.Set("HashSHA256", signature)
+			}
+
+			resp, lastErr = http.DefaultClient.Do(req)
 			if lastErr == nil && resp.StatusCode == http.StatusOK {
 				return resp, nil
 			}
 			time.Sleep(time.Second * time.Duration((retry+1)*2))
 		}
 	}
-
 	return resp, lastErr
 }
 
@@ -97,13 +112,13 @@ func Send(metricRequest MetricRequest, serverAddress string) {
 	}
 }
 
-func SendBatch(metricRequest MetricRequest, serverAddress string) {
+func SendBatch(metricRequest NewMetricRequest, serverAddress string, key string) {
 	url := fmt.Sprintf("%s/updates/", serverAddress)
 
 	metrics := make([]mj.Metrics, 0)
 
-	gaugeMetrics := metricRequest.CollectGauge()
-	counterMetrics := metricRequest.CollectCounter()
+	gaugeMetrics := metricRequest.GetGauge()
+	counterMetrics := metricRequest.GetCounter()
 
 	for name, gauge := range gaugeMetrics {
 		v := gauge
@@ -136,7 +151,7 @@ func SendBatch(metricRequest MetricRequest, serverAddress string) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	resp, err := retryableHTTPPost(ctx, url, &buf)
+	resp, err := retryableHTTPPost(ctx, url, &buf, key)
 	if err != nil {
 		log.Printf("Error sending batch metrics after %d retries: %v", RetryCount, err)
 		return

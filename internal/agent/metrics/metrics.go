@@ -1,11 +1,18 @@
 package metrics
 
 import (
+	"fmt"
 	"math/rand"
 	"runtime"
+	"sync"
+	"time"
+
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/mem"
 )
 
 type Metrics struct {
+	mu		sync.RWMutex
 	gauge   map[string]float64
 	counter map[string]int64
 }
@@ -17,7 +24,8 @@ func NewMetrics() *Metrics {
 	}
 }
 
-func (m *Metrics) CollectGauge() map[string]float64 {
+func (m *Metrics) CollectGauge() {
+	m.mu.Lock()
 	var mem = new(runtime.MemStats)
 	runtime.ReadMemStats(mem)
 
@@ -50,11 +58,48 @@ func (m *Metrics) CollectGauge() map[string]float64 {
 	m.gauge["TotalAlloc"] = float64(mem.TotalAlloc)
 
 	m.gauge["RandomValue"] = float64(rand.Intn(100))
+	m.mu.Unlock()
+}
 
+func (m *Metrics) CollectAdditionalGauge() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	v, err := mem.VirtualMemory()
+	if err != nil {
+		return fmt.Errorf("read cpu gopsutil err: %w", err)
+	}
+
+	utils, err := cpu.Percent(1*time.Second, true)
+	if err != nil {
+		return fmt.Errorf("read cpu gopsutil err: %w", err)
+	}
+
+	m.gauge["TotalMemory"] = float64(v.Total)
+	m.gauge["FreeMemory"] = float64(v.Free)
+
+	for k, value := range utils {
+		index := fmt.Sprintf("CPUutilization%d", k)
+		m.gauge[index] = value
+	}
+
+	return nil
+}
+
+func (m *Metrics) GetGauge() map[string]float64 {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	return m.gauge
 }
 
-func (m *Metrics) CollectCounter() map[string]int64 {
+func (m *Metrics) CollectCounter() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.counter["PollCount"] += 1
+}
+
+func (m *Metrics) GetCounter() map[string]int64 {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	return m.counter
 }

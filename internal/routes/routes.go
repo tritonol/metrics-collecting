@@ -13,14 +13,14 @@ import (
 	"go.uber.org/zap"
 )
 
-func MetricRouter(ctx context.Context, storage storage.Storage, logger *zap.Logger) chi.Router {
+func MetricRouter(ctx context.Context, storage storage.Storage, logger *zap.Logger, key string) chi.Router {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestLogger(logger))
 	r.Use(compressor.GzipMiddleware)
 
 	r.Post("/update/{type}/{name}/{value}", save.New(storage))
 	r.Post("/update/", save.NewJSON(storage))
-	r.Post("/updates/", save.Update(storage))
+	r.Post("/updates/", save.Update(storage, key))
 
 	r.Get("/value/{type}/{name}", get.Get(storage))
 	r.Post("/value/", get.GetJSON(storage))

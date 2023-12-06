@@ -39,7 +39,7 @@ func main() {
 		storage = memstorage.NewMemStorage()
 	}
 
-	server := &http.Server{Addr: cfg.Server.Address, Handler: routes.MetricRouter(ctx, storage, logger)}
+	server := &http.Server{Addr: cfg.Server.Address, Handler: routes.MetricRouter(ctx, storage, logger, cfg.Key)}
 
 	logger.Info("Server strat")
 

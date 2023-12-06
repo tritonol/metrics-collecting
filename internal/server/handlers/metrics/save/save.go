@@ -1,6 +1,7 @@
 package save
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -11,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/tritonol/metrics-collecting.git/internal/services/hashing"
 	m "github.com/tritonol/metrics-collecting.git/internal/structs/JSON"
 )
 
@@ -130,11 +132,27 @@ func NewJSON(metricSaver MetricSaver) http.HandlerFunc {
 	}
 }
 
-func Update(storage MetricSaver) http.HandlerFunc {
+func Update(storage MetricSaver, key string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var metrics []m.Metrics
 
-		err := json.NewDecoder(r.Body).Decode(&metrics)
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "Error reading request body", http.StatusBadRequest)
+			return
+		}
+
+		if key != "" {
+			signature := r.Header.Get("HashSHA256")
+			isVerify := hashing.VerifySHA256(body, key, signature)
+			fmt.Println(isVerify)
+			if !isVerify {
+				http.Error(w, "Bad Request: Signature does not match", http.StatusBadRequest)
+				return
+			}
+		}
+
+		err = json.NewDecoder(bytes.NewReader(body)).Decode(&metrics)
 		if err != nil {
 			http.Error(w, "something wrong", http.StatusBadRequest)
 		}
@@ -143,5 +161,8 @@ func Update(storage MetricSaver) http.HandlerFunc {
 		if err != nil {
 			http.Error(w, "something wrong", http.StatusInternalServerError)
 		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Metrics successfully processed"))
 	}
 }
